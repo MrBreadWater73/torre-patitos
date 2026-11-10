@@ -6,11 +6,12 @@ torre-patitos/
 │   ├── index.html      la página del juego (solo el HTML)
 │   ├── css/juego.css   estilos
 │   ├── js/             el código, en archivos que se cargan en este orden:
-│   │                   base, mundo, estado, nivel, dibujo, partida,
+│   │                   base, reglas, mundo, estado, nivel, dibujo, partida,
 │   │                   interfaz, datos, estadisticas, arranque
 │   ├── config.js       aquí pegas la URL y la llave de Supabase
 │   ├── netlify.toml    configuración del sitio estático
 │   └── arte/           (opcional) ilustraciones generadas con Gemini
+├── tests/              pruebas de las reglas del juego (`node --test tests/`)
 ├── supabase.sql        tablas, funciones y vistas de PostgreSQL
 ├── PROMPTS-GEMINI.md   prompts para las ilustraciones
 └── LEEME.md
@@ -86,3 +87,9 @@ Genera las imágenes con los prompts de `PROMPTS-GEMINI.md`, guárdalas en `siti
 8. En celulares los controles quedaban debajo del borde de la pantalla; el área de juego ahora se ajusta a la altura disponible.
 9. Se quitó la referencia a personajes de una serie con derechos de autor: Pipo y su familia son personajes originales.
 10. Saltar al vacío mataba siempre. Ahora Pipo cae al piso de abajo y solo muere si la caída es de más de 3 pisos; lo mismo al romperse el vidrio o apagarse una placa debajo de él. Tampoco se puede saltar fuera de la torre.
+
+## Desarrollo
+
+- **Probar en local:** el juego necesita un servidor web (no funciona abriendo el archivo con doble clic). Dentro de `sitio/` corre `python3 -m http.server 8000` y abre `http://localhost:8000`. Ojo: si `config.js` tiene las llaves de Supabase, las partidas de prueba se guardan en la base real; vacíalas mientras pruebas.
+- **Pruebas:** `node --test tests/` corre las pruebas de `sitio/js/reglas.js`, que contiene las reglas del juego que no dependen del dibujo (palancas, ida y vuelta, alcance del golpe).
+- **Modo de prueba:** agrega `?qa` a la URL para pausar el reloj y manejar el juego desde la consola con `towerQA`.

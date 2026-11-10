@@ -23,8 +23,8 @@ Test runner: `node --test tests/` for pure modules (Node 20, zero dependencies).
 
 ## Tasks
 
-- [ ] T1 · S5 · inline · Split `sitio/index.html` into CSS and JS files with identical behavior; add the test runner.
-- [ ] T2 · S4, S6 · inline · Vertical slice on level 1: round trip with the sibling following, levers activated by the punch. Playable checkpoint for the user.
+- [x] T1 · S5 · inline · Split `sitio/index.html` into CSS and JS files with identical behavior; add the test runner. Commit `8aaf0af`; proof: scripts byte-identical, `?qa` trace hash 1231654435 before and after.
+- [x] T2 · S4, S6 · inline · Vertical slice on level 1: round trip with the sibling following, levers activated by the punch. RED→GREEN in `tests/reglas.test.js` (8 tests); browser check through `?qa`. Awaiting the user's play check.
 - [ ] T3 · S4 · Packages that open the door, secret places with feathers, taller level 1.
 - [ ] T4 · S6 · Levels 2 to 6 with their mechanics (pots, conveyors and rideable drones, ice, wind, combination).
 - [ ] T5 · S4, S6 · Generated final tower and chase finale.
@@ -100,3 +100,6 @@ Test runner: `node --test tests/` for pure modules (Node 20, zero dependencies).
 - **L6 (2026-11-10, evidence):** Tarea 3 baseline from Supabase, 37 runs on 3–4 Nov 2026: 57 % finish, median total 1:27, 3.2 deaths per run; funnel 37 → 29 → 23 → 21 → 16 surveys; deaths per chapter 1.3 / 1.8 / 1.2; causes drone 100 (83 %), blackout 14, long fall 6, glass 0; drones punched per run 0.5 / 0.4 / 0.2; feather 52 / 57 / 71 %; fun 4.4, clarity 4.5. Punch reach today: same floor, 0.84 cells.
 - **L7 (2026-11-10, decision):** Library and asset research. Adopt ZzFX (MIT, under 1 KB) for sound effects and CC0 music loops (OpenGameArt, Kenney) played with native audio; keep the hand-drawn vector art instead of external sprite packs because they would break the style; skip GSAP (free but not open source, and the game loop already owns timing) and Howler (not needed for one music loop). Everything is bundled in the ZIP, no CDN at runtime.
 - **L8 (2026-11-10, route):** T1 and T2 inline. T1 has no meaningful RED (mechanical move); proof is byte equality of the concatenated scripts plus an identical `?qa` trace before and after.
+- **L9 (2026-11-10, evidence, T2):** Level 1 slice verified in the browser with `?qa`: hopping into the bridge while it is off drops Pipo back to floor 1; the punch out of reach does nothing; the punch within 1.3 cells flips the lever and the bridge holds; touching Tina switches to the way down (night tint, 5 drones, 5 platforms gone, flags saving downward, death marked `d`); reaching the ground floor closes the level. Chapters 2 and 3 keep the old behavior: movement trace hash -2098329918 on both the base and the branch. No console errors in normal mode.
+- **L10 (2026-11-10, decision):** Punch reach raised from 0.84 to 1.3 cells (observation: punch barely used, players asked for more range). The sibling is a follower that cannot die, to avoid escort frustration. A night drone placed on a flag floor killed Pipo right after respawn, so drones never patrol flag floors.
+- **L11 (2026-11-10, open):** Rescued siblings could get an ability each (idea for T4). Dropping makes the way down faster than the way up, so the 30 minute estimate must be re-measured once level 1 has its final height.

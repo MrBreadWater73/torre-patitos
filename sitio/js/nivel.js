@@ -14,11 +14,13 @@ function blinkState(row, b, t = clock) {
   const r = L.rows[row], ph = mod(t + b.o, r.period), on = ph < r.on;
   return { on, warn: on && r.on - ph < .55, appear: on ? clamp(ph / .18, 0, 1) : 0, charge: on ? 0 : (ph - r.on) / (r.period - r.on) };
 }
+const goneNow = (row, x) => Reglas.cellGone(L.down && L.down.gone, phase, row, x);
 function kindAt(row, x) {
   if (row < 0 || row >= nRows()) return null;
   const r = L.rows[row], near = c => Math.abs(c - x) <= .501;
   if (r.moving) return 'moving';
-  if ((r.cells || []).some(near)) return 'fixed';
+  if ((r.cells || []).some(c => near(c) && !goneNow(row, c))) return 'fixed';
+  if ((r.gate || []).some(q => near(q.x))) return 'gate';
   if ((r.crumble || []).some(near)) return 'crumble';
   if ((r.blink || []).some(b => near(b.x))) return 'blink';
   return null;
@@ -27,7 +29,8 @@ function platformAt(row, x) {
   if (row < 0 || row >= nRows()) return null;
   const r = L.rows[row], near = c => Math.abs(c - x) <= .501;
   if (r.moving) { const mx = movingX(row); return Math.abs(x - mx) <= .52 ? { x: mx, kind: 'moving' } : null; }
-  let c = (r.cells || []).find(near); if (c !== undefined) return { x: c, kind: 'fixed' };
+  let c = (r.cells || []).find(c => near(c) && !goneNow(row, c)); if (c !== undefined) return { x: c, kind: 'fixed' };
+  const q = (r.gate || []).find(q => near(q.x)); if (q) return Reglas.gateOn(levers, q.g) ? { x: q.x, kind: 'gate' } : null;
   c = (r.crumble || []).find(near);
   if (c !== undefined) { const s = crumbles.get(row + ':' + c); return s && s.state === 'broken' ? null : { x: c, kind: 'crumble' }; }
   const b = (r.blink || []).find(b => near(b.x)); if (b && blinkState(row, b).on) return { x: b.x, kind: 'blink' };

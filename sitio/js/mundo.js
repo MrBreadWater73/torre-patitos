@@ -13,15 +13,25 @@ const GRAF = (() => { const r = rng(21), cols = ['rgba(196,64,74,.5)', 'rgba(64,
 const LEVELS = [
   { n: 1, name: 'Torre del parque', theme: 'morning', sibling: 'Tina', sib: 'phone', tutorial: 2, bubble: 'Llegas tarde.',
     objective: 'Baja a Tina de la torre antes de que se le acabe la batería.',
-    tip: 'Las banderas guardan tu avance. Los drones de reparto van y vienen con la puntualidad que no tuvieron con tu nido: espera o reclámales con un golpe. Caer hasta 3 pisos duele, pero no mata.',
+    tip: 'El golpe mueve palancas: la azul enciende el puente azul. Las banderas guardan tu avance. Los drones de reparto van y vienen con la puntualidad que no tuvieron con tu nido: espera o reclámales con un golpe.',
     zones: [[2, 'Planta baja'], [5, 'Zona de cruce'], [6, 'Plataforma móvil'], [99, 'Azotea']],
     rows: [
-      { cells: [0, 1, 2, 3, 4] }, { cells: [1, 2, 3] }, { cells: [0, 1, 2, 3, 4], checkpoint: true }, { cells: [0, 1, 2, 3, 4] },
+      { cells: [0, 1, 2, 3, 4] }, { cells: [1, 2, 3] }, { gate: [{ x: 1, g: 'a' }, { x: 2, g: 'a' }, { x: 3, g: 'a' }], checkpoint: true }, { cells: [0, 1, 2, 3, 4] },
       { cells: [1, 2, 3], checkpoint: true }, { cells: [2, 3, 4] }, { moving: { c: 2, a: 1.05, s: .9, p: -1.15 } },
       { cells: [1, 2, 3], checkpoint: true }, { cells: [1, 3] }, { cells: [1, 2, 3] }
     ],
     feather: { row: 5, x: 4 },
-    drones: [{ row: 3, speed: .92, phase: 1.9, span: 2.65, center: 2 }, { row: 5, speed: 1.1, phase: -.9, span: .85, center: 3.7 }, { row: 8, speed: 1.35, phase: .35, span: 2.65, center: 2 }]
+    levers: [{ row: 1, x: .1, g: 'a' }],
+    drones: [{ row: 3, speed: .92, phase: 1.9, span: 2.65, center: 2 }, { row: 5, speed: 1.1, phase: -.9, span: .85, center: 3.7 }, { row: 8, speed: 1.35, phase: .35, span: 2.65, center: 2 }],
+    // La bajada: misma torre, de noche. Se cayeron plataformas y hay más drones.
+    down: {
+      objective: 'Baja con Tina hasta la planta baja. Ya es de noche.',
+      tip: 'Bajar es otro oficio: puedes dejarte caer hasta 3 pisos si hay algo abajo que te reciba. Las banderas ahora guardan tu avance hacia abajo. Tina te sigue; no ayuda, pero graba.',
+      hello: 'Ya era hora.',
+      gone: [[8, 1], [5, 2], [3, 0], [3, 4], [1, 2]],
+      drones: [{ row: 8, speed: 1.35, phase: .35, span: 2.65, center: 2 }, { row: 6, speed: 1.05, phase: 2.4, span: 2.2, center: 2 }, { row: 5, speed: 1.1, phase: -.9, span: .85, center: 3.7 }, { row: 3, speed: 1.15, phase: 1.9, span: 2.65, center: 2 }, { row: 1, speed: .9, phase: .6, span: 2.3, center: 2 }]
+    },
+    quips: ['Esto va para mis historias.', 'Más lento, se mueve la toma.', 'Sin señal. Qué horror.', 'Pon cara de héroe.', 'Voy en vivo, no me empujes.']
   },
   { n: 2, name: 'Vivero abandonado', theme: 'greenhouse', sibling: 'Lalo', sib: 'shades', tutorial: 2, bubble: 'Aquí vivo ahora.',
     objective: 'Convence a Lalo de que no puede vivir en una maceta.',

@@ -21,6 +21,7 @@ let g = ctx; // contexto de dibujo activo (se cambia para viñetas y mapas)
 const W = 760, H = 840, CELL = 82, RISE = 68, BASE = 756, JUMP = .5;
 const QA = new URLSearchParams(location.search).has('qa');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const coarse = matchMedia('(pointer: coarse)').matches; // pantalla táctil
 const inClaude = !!(window.claude && typeof window.claude.use === 'function');
 const lerp = (a, b, t) => a + (b - a) * t, clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const smooth = u => u * u * (3 - 2 * u), easeOut = u => 1 - Math.pow(1 - u, 3);

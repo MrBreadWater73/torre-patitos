@@ -169,7 +169,7 @@ function drawRain() {
 function drawPlatform(x, row, kind, o = {}) {
   const T = THEMES[L.theme], p = project(x, row);
   if (o.shake) p.x += (Math.random() - .5) * 3.2;
-  const w = kind === 'moving' ? 84 : 74, h = kind === 'crumble' ? 14 : kind === 'blink' ? 15 : 19;
+  const w = kind === 'moving' ? 84 : 74, h = kind === 'crumble' ? 14 : kind === 'blink' || kind === 'gate' ? 15 : 19;
   const a = P(p.x - w / 2, p.y - 7), b = P(p.x + w / 2, p.y + 7), c = P(p.x + w / 2 + 22, p.y - 12), d = P(p.x - w / 2 + 22, p.y - 26);
   const geo = { a, b, c, d };
   g.save(); g.globalAlpha = o.alpha ?? 1;
@@ -183,6 +183,7 @@ function drawPlatform(x, row, kind, o = {}) {
   if (kind === 'moving') { top = '#93a6ae'; s1 = '#6f828b'; s2 = '#58686f'; }
   if (kind === 'crumble') { top = 'rgba(196,214,208,.92)'; s1 = 'rgba(132,156,152,.92)'; s2 = 'rgba(108,132,128,.92)'; }
   if (kind === 'blink') { top = o.warn && Math.sin(amb * 38) > 0 ? '#fff1c0' : '#e3c24a'; s1 = '#9c7c25'; s2 = '#7f641d'; }
+  if (kind === 'gate') { top = '#6fb1cf'; s1 = '#3f7f9c'; s2 = '#2f6a85'; }
   if (o.feather && kind === 'fixed') top = '#cdb76a';
   if (kind === 'blink' && !reduced) { g.save(); g.globalAlpha = (o.alpha ?? 1) * (o.warn ? .22 : .35); ell((a.x + c.x) / 2, (a.y + c.y) / 2, 52, 22, '#ffd36a'); g.restore(); }
   poly([b, c, P(c.x, c.y + h), P(b.x, b.y + h)], s2);
@@ -251,18 +252,50 @@ function drawGoal(x, row) {
   if (mode !== 'celebrate') drawBubble(c.x + 4, c.y - 64 - hop, L.bubble);
 }
 
+/* Palanca: se activa con el golpe y enciende los puentes de su color */
+function drawLever(lv) {
+  const T = THEMES[L.theme], c = topCenter(lv.x, lv.row), on = Reglas.gateOn(levers, lv.g);
+  const k = leverHit && leverHit.g === lv.g ? clamp((amb - leverHit.t) / .3, 0, 1) : 1;
+  const ang = (on ? .6 : -.6) + (reduced ? 0 : Math.sin(k * Math.PI) * (on ? .35 : -.35));
+  const tip = P(c.x + Math.sin(ang) * 26, c.y - 4 - Math.cos(ang) * 26);
+  ell(c.x, c.y + 9, 20, 6, 'rgba(20,20,20,.2)');
+  rrect(c.x - 17, c.y + 2, 34, 8, 2, T.side1, 'rgba(0,0,0,.35)', 1);
+  rrect(c.x - 11, c.y - 7, 22, 11, 3, '#2f2c28');
+  ell(c.x + 6, c.y - 2, 2.4, 2.4, on ? '#8fe0ff' : '#5a5650');
+  line([P(c.x, c.y - 4), tip], '#1c1d1f', 6); line([P(c.x, c.y - 4), tip], '#b9b4a8', 3);
+  ell(tip.x, tip.y, 7, 7, '#1c1d1f'); ell(tip.x, tip.y, 5, 5, on ? '#6fb1cf' : '#e0782c');
+  const inReach = mode === 'playing' && combat && Math.round(player.row) === lv.row && Math.abs(player.x - lv.x) <= Reglas.PUNCH_REACH;
+  if (inReach && !levers.has(lv.g)) drawBubble(c.x + 4, c.y - 40 - (reduced ? 0 : Math.abs(Math.sin(amb * 4)) * 4), coarse ? 'GOLPE' : 'GOLPE: J');
+  else if (!levers.has(lv.g) && !reduced && mode === 'playing') { g.beginPath(); g.arc(tip.x, tip.y, 11 + Math.sin(amb * 5) * 2, 0, Math.PI * 2); g.strokeStyle = 'rgba(224,120,44,.8)'; g.lineWidth = 1.6; g.stroke(); }
+}
+/* El hermano rescatado sigue a Pipo, un aterrizaje atrás */
+function drawFollower() {
+  const f = follower, u = clamp(f.t, 0, 1), e = smooth(u), jumping = mode === 'celebrate';
+  const tx = L.rows[f.row].moving ? movingX(f.row) : f.x, x = lerp(f.fromX, tx, e), row = lerp(f.fromRow, f.row, e);
+  const lift = u < 1 ? Math.sin(Math.PI * u) * 34 : 0, c = topCenter(x, row, lift);
+  const hop = jumping && !reduced ? Math.abs(Math.sin(amb * 9)) * 16 : 0;
+  ell(c.x - 13, c.y + 2 + lift, 16, 5, 'rgba(20,20,20,.2)');
+  drawDuck(c.x - 13, c.y - 3 - hop, .86, Math.sign(player.x - x) || 1, { acc: L.sib, blink: amb < sibBlink.until, flap: u < 1 || jumping ? Math.sin(amb * 30) * .5 : 0 });
+  if (sibQuip && amb < sibQuip.until && !jumping) drawBubble(c.x - 13, c.y - 58, sibQuip.text);
+}
+function drawExit() {
+  const c = topCenter(2, 0), bob = reduced ? 0 : Math.sin(amb * 3) * 4;
+  drawBubble(c.x, c.y - 44 + bob, 'SALIDA'); drawArrow(c.x - 1, c.y - 30 + bob, Math.PI / 2, 'rgba(240,138,60,.95)', 6);
+}
 function platformAndExtras(x, row, kind, b) {
   const o = {};
   if (kind === 'crumble') { const s = crumbles.get(row + ':' + x); if (s) { if (s.state === 'broken') { o.ghost = true; o.ghostColor = 'rgba(160,215,222,.55)'; } else if (s.state === 'shaking') { o.shake = !reduced; o.crack = s.t; } else if (s.state === 'returning') o.alpha = clamp(s.t / .35, 0, 1); } }
   if (kind === 'blink') { const st = blinkState(row, b); if (!st.on) { o.ghost = true; o.ghostColor = 'rgba(255,214,90,.6)'; o.ghostFill = 'rgba(255,214,90,.07)'; o.charge = st.charge; } else { o.warn = st.warn; o.alpha = .4 + .6 * st.appear; } }
+  if (kind === 'gate' && !Reglas.gateOn(levers, b.g)) { o.ghost = true; o.ghostColor = 'rgba(111,177,207,.95)'; o.ghostFill = 'rgba(111,177,207,.18)'; }
   if (L.feather && row === L.feather.row && Math.abs(x - L.feather.x) < .1) o.feather = true;
   const geo = drawPlatform(x, row, kind, o), center = topCenter(x, row);
   const T = THEMES[L.theme];
   if (L.n === 1 && row <= 2 && Math.abs(x - 2) < .1) footprints(center.x, center.y, .75);
-  if (L.rows[row].checkpoint && x === 2) drawFlag(center.x + 15, center.y - 6, flags.get(row));
-  if (row === nRows() - 1 && x === 2) drawGoal(x, row);
+  const off = kind === 'gate' && o.ghost; // puente apagado: no se puede pisar
+  if (L.rows[row].checkpoint && x === 2 && !off) drawFlag(center.x + 15, center.y - 6, flags.get(row));
+  if (phase === 'up' && row === nRows() - 1 && x === 2) drawGoal(x, row);
   if (o.feather && !featherGot) drawFeather(x, row);
-  const reachable = mode === 'playing' && canReach(x, row);
+  const reachable = mode === 'playing' && !off && canReach(x, row);
   if (reachable) { g.beginPath(); g.ellipse(center.x, center.y, 21, 7, .12, 0, Math.PI * 2); g.strokeStyle = T.reach; g.lineWidth = 1.6; g.setLineDash([3, 4]); g.stroke(); g.setLineDash([]); }
   if (reachable && hover && hover.row === row && Math.abs(hover.x - x) < .3) { g.beginPath(); g.ellipse(center.x, center.y, 26, 9, .12, 0, Math.PI * 2); g.strokeStyle = T.reach; g.lineWidth = 2.6; g.stroke(); }
   hitAreas.push({ x, row, points: [geo.a, geo.b, geo.c, geo.d], kind });
@@ -281,12 +314,16 @@ function render() {
     if (r.moving) { drawMovingRail(row); platformAndExtras(movingX(row), row, 'moving'); }
     else {
       const items = [];
-      (r.cells || []).forEach(x => items.push([x, 'fixed'])); (r.crumble || []).forEach(x => items.push([x, 'crumble'])); (r.blink || []).forEach(b => items.push([b.x, 'blink', b]));
+      (r.cells || []).forEach(x => { if (!goneNow(row, x)) items.push([x, 'fixed']); }); (r.gate || []).forEach(q => items.push([q.x, 'gate', q])); (r.crumble || []).forEach(x => items.push([x, 'crumble'])); (r.blink || []).forEach(b => items.push([b.x, 'blink', b]));
       items.sort((p, q) => p[0] - q[0]).forEach(it => platformAndExtras(it[0], row, it[1], it[2]));
     }
     for (const d of drones) if (d.row === row) drawDrone(d);
+    for (const lv of L.levers || []) if (lv.row === row) drawLever(lv);
   }
-  if (L.n === 1 && player.row <= 1 && mode !== 'celebrate') { const a = topCenter(2, 0), b = topCenter(2, 1); g.beginPath(); g.moveTo(a.x, a.y - 3); g.quadraticCurveTo(a.x + 30, a.y - 55, b.x, b.y + 6); g.strokeStyle = 'rgba(240,138,60,.7)'; g.lineWidth = 2; g.setLineDash([4, 6]); g.stroke(); g.setLineDash([]); drawArrow(b.x, b.y + 6, -Math.PI / 2, 'rgba(240,138,60,.85)', 5); }
+  if (phase === 'down') drawExit();
+  if (dusk > .01) { g.fillStyle = 'rgba(14,18,44,' + (.36 * dusk).toFixed(3) + ')'; g.fillRect(0, 0, W, H); } // cae la noche en la bajada
+  if (follower) drawFollower();
+  if (L.n === 1 && phase === 'up' && player.row <= 1 && mode !== 'celebrate') { const a = topCenter(2, 0), b = topCenter(2, 1); g.beginPath(); g.moveTo(a.x, a.y - 3); g.quadraticCurveTo(a.x + 30, a.y - 55, b.x, b.y + 6); g.strokeStyle = 'rgba(240,138,60,.7)'; g.lineWidth = 2; g.setLineDash([4, 6]); g.stroke(); g.setLineDash([]); drawArrow(b.x, b.y + 6, -Math.PI / 2, 'rgba(240,138,60,.85)', 5); }
   drawPlayer();
   drawRain();
   drawParticles();
@@ -303,7 +340,7 @@ function drawPlayer() {
   g.save(); g.globalAlpha = alpha;
   drawDuck(p.x, p.y - 3, 1, face, { acc: 'scarf', sq: player.sq, blink: amb < blinkEye.until, wind: player.jump ? 2.2 : 1, flap: player.drop ? Math.sin(amb * 48) * .9 : player.jump ? Math.sin(amb * 32) * .5 : 0, alarm: !!(player.drop || player.fall), shield: player.shield > 0 && Math.sin(amb * 20) > -.3, rot });
   if (punch && !player.fall) {
-    const u = punch.age / .25, reach = Math.sin(Math.PI * u) * 31;
+    const u = punch.age / .25, reach = Math.sin(Math.PI * u) * (punch.far ? 58 : 31);
     g.save(); g.translate(p.x, p.y - 23); g.scale(punch.dir, 1);
     line([P(9, 0), P(19 + reach, -3)], '#2c3529', 9); line([P(9, 0), P(19 + reach, -3)], '#ffd23f', 6);
     rrect(15 + reach, -10, 15, 13, 4, '#ffd23f', '#2c3529');
