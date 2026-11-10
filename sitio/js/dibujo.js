@@ -183,7 +183,7 @@ function drawPlatform(x, row, kind, o = {}) {
   if (kind === 'moving') { top = '#93a6ae'; s1 = '#6f828b'; s2 = '#58686f'; }
   if (kind === 'crumble') { top = 'rgba(196,214,208,.92)'; s1 = 'rgba(132,156,152,.92)'; s2 = 'rgba(108,132,128,.92)'; }
   if (kind === 'blink') { top = o.warn && Math.sin(amb * 38) > 0 ? '#fff1c0' : '#e3c24a'; s1 = '#9c7c25'; s2 = '#7f641d'; }
-  if (kind === 'gate') { top = '#6fb1cf'; s1 = '#3f7f9c'; s2 = '#2f6a85'; }
+  if (kind === 'gate') { [top, s1, s2] = groupColors(o.group); }
   if (o.feather && kind === 'fixed') top = '#cdb76a';
   if (kind === 'blink' && !reduced) { g.save(); g.globalAlpha = (o.alpha ?? 1) * (o.warn ? .22 : .35); ell((a.x + c.x) / 2, (a.y + c.y) / 2, 52, 22, '#ffd36a'); g.restore(); }
   poly([b, c, P(c.x, c.y + h), P(b.x, b.y + h)], s2);
@@ -252,6 +252,18 @@ function drawGoal(x, row) {
   if (mode !== 'celebrate') drawBubble(c.x + 4, c.y - 64 - hop, L.bubble);
 }
 
+/* Cada grupo de puentes tiene su color; la palanca que lo enciende usa el mismo */
+const GROUP_COLORS = { a: ['#6fb1cf', '#3f7f9c', '#2f6a85', 'rgba(111,177,207,.18)'], b: ['#d98ab3', '#a85d85', '#8a4a6c', 'rgba(217,138,179,.18)'], pk: ['#d9a441', '#a87a26', '#8a631c', 'rgba(217,164,65,.16)'] };
+const groupColors = g => GROUP_COLORS[g] || GROUP_COLORS.a;
+/* Paquete de reparto: hay que juntarlos todos para abrir la puerta */
+function drawPackage(x, row) {
+  const p = topCenter(x, row), bob = reduced ? 0 : Math.sin(amb * 2.6 + row) * 3, y = p.y - 16 + bob;
+  if (!reduced) ell(p.x, p.y - 12, 24, 20, 'rgba(217,164,65,' + (.16 + Math.sin(amb * 4) * .06) + ')');
+  ell(p.x, p.y + 1, 15, 4.5, 'rgba(20,20,20,.22)');
+  rrect(p.x - 13, y - 11, 26, 20, 2.5, '#b98d5b', '#4f3a24', 1.3);
+  g.fillStyle = '#e2bd48'; g.fillRect(p.x - 2.5, y - 11, 5, 20); g.fillRect(p.x - 13, y - 3.5, 26, 4);
+  line([P(p.x - 13, y - 11), P(p.x - 6, y - 16), P(p.x + 6, y - 16), P(p.x + 13, y - 11)], '#4f3a24', 1.3);
+}
 /* Palanca: se activa con el golpe y enciende los puentes de su color */
 function drawLever(lv) {
   const T = THEMES[L.theme], c = topCenter(lv.x, lv.row), on = Reglas.gateOn(levers, lv.g);
@@ -263,7 +275,7 @@ function drawLever(lv) {
   rrect(c.x - 11, c.y - 7, 22, 11, 3, '#2f2c28');
   ell(c.x + 6, c.y - 2, 2.4, 2.4, on ? '#8fe0ff' : '#5a5650');
   line([P(c.x, c.y - 4), tip], '#1c1d1f', 6); line([P(c.x, c.y - 4), tip], '#b9b4a8', 3);
-  ell(tip.x, tip.y, 7, 7, '#1c1d1f'); ell(tip.x, tip.y, 5, 5, on ? '#6fb1cf' : '#e0782c');
+  ell(tip.x, tip.y, 7, 7, '#1c1d1f'); ell(tip.x, tip.y, 5, 5, groupColors(lv.g)[0]); if (!on) ell(tip.x, tip.y, 2.2, 2.2, '#1c1d1f');
   const inReach = mode === 'playing' && combat && Math.round(player.row) === lv.row && Math.abs(player.x - lv.x) <= Reglas.PUNCH_REACH;
   if (inReach && !levers.has(lv.g)) drawBubble(c.x + 4, c.y - 40 - (reduced ? 0 : Math.abs(Math.sin(amb * 4)) * 4), coarse ? 'GOLPE' : 'GOLPE: J');
   else if (!levers.has(lv.g) && !reduced && mode === 'playing') { g.beginPath(); g.arc(tip.x, tip.y, 11 + Math.sin(amb * 5) * 2, 0, Math.PI * 2); g.strokeStyle = 'rgba(224,120,44,.8)'; g.lineWidth = 1.6; g.stroke(); }
@@ -286,7 +298,7 @@ function platformAndExtras(x, row, kind, b) {
   const o = {};
   if (kind === 'crumble') { const s = crumbles.get(row + ':' + x); if (s) { if (s.state === 'broken') { o.ghost = true; o.ghostColor = 'rgba(160,215,222,.55)'; } else if (s.state === 'shaking') { o.shake = !reduced; o.crack = s.t; } else if (s.state === 'returning') o.alpha = clamp(s.t / .35, 0, 1); } }
   if (kind === 'blink') { const st = blinkState(row, b); if (!st.on) { o.ghost = true; o.ghostColor = 'rgba(255,214,90,.6)'; o.ghostFill = 'rgba(255,214,90,.07)'; o.charge = st.charge; } else { o.warn = st.warn; o.alpha = .4 + .6 * st.appear; } }
-  if (kind === 'gate' && !Reglas.gateOn(levers, b.g)) { o.ghost = true; o.ghostColor = 'rgba(111,177,207,.95)'; o.ghostFill = 'rgba(111,177,207,.18)'; }
+  if (kind === 'gate') { o.group = b.g; if (!Reglas.gateOn(levers, b.g)) { o.ghost = true; o.ghostColor = groupColors(b.g)[0]; o.ghostFill = groupColors(b.g)[3]; } }
   if (L.feather && row === L.feather.row && Math.abs(x - L.feather.x) < .1) o.feather = true;
   const geo = drawPlatform(x, row, kind, o), center = topCenter(x, row);
   const T = THEMES[L.theme];
@@ -294,7 +306,9 @@ function platformAndExtras(x, row, kind, b) {
   const off = kind === 'gate' && o.ghost; // puente apagado: no se puede pisar
   if (L.rows[row].checkpoint && x === 2 && !off) drawFlag(center.x + 15, center.y - 6, flags.get(row));
   if (phase === 'up' && row === nRows() - 1 && x === 2) drawGoal(x, row);
-  if (o.feather && !featherGot) drawFeather(x, row);
+  if (o.feather && !featherGot && !off) drawFeather(x, row);
+  const pi = Reglas.packageAt(L.packages, row, x); if (pi >= 0 && !gotPk.has(pi)) drawPackage(x, row);
+  if (off && b.g === 'pk' && x === 2) drawBubble(center.x, center.y - 16, gotPk.size + ' / ' + L.packages.length + ' paquetes');
   const reachable = mode === 'playing' && !off && canReach(x, row);
   if (reachable) { g.beginPath(); g.ellipse(center.x, center.y, 21, 7, .12, 0, Math.PI * 2); g.strokeStyle = T.reach; g.lineWidth = 1.6; g.setLineDash([3, 4]); g.stroke(); g.setLineDash([]); }
   if (reachable && hover && hover.row === row && Math.abs(hover.x - x) < .3) { g.beginPath(); g.ellipse(center.x, center.y, 26, 9, .12, 0, Math.PI * 2); g.strokeStyle = T.reach; g.lineWidth = 2.6; g.stroke(); }

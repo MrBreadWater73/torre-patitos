@@ -11,7 +11,7 @@ function resetLevelState() {
   clock = 0; cam = 0; flyover = null; shake = 0; flash = 0; nextFlash = 5;
   player = { row: 0, x: 2, jump: null, fall: null, drop: null, shield: 0, sq: 0, face: 1 };
   checkpoint = { row: 0, x: 2 }; drones = L.drones.map(d => Object.assign({}, d, { destroyed: false }));
-  phase = 'up'; levers = new Map(); trail = null; follower = null; dusk = 0; sibQuip = null; leverHit = null;
+  phase = 'up'; gotPk = new Set(); levers = new Map(); trail = null; follower = null; dusk = 0; sibQuip = null; leverHit = null;
   crumbles.clear(); flags.clear(); featherGot = false; cooldown = 0; punch = null; pending = null; celebrate = null; particles = []; hover = null; lastHud = '';
 }
 function loadLevel(i) {
@@ -83,6 +83,13 @@ function settle(row, sup, floors) {
   if (sup.kind === 'crumble') { const k = row + ':' + sup.x, s = crumbles.get(k); if (!s || s.state === 'returning') { crumbles.set(k, { state: 'shaking', t: 0 }); tone('crack'); } }
   if (L.rows[row].checkpoint && Reglas.flagAdvances(phase, row, checkpoint.row)) { checkpoint = { row, x: sup.x }; flags.set(row, amb); burst(player.x, row, '#e0782c', 14); tone('checkpoint'); announce('Bandera alcanzada: tu avance está guardado.'); }
   if (L.feather && row === L.feather.row && Math.abs(player.x - L.feather.x) < .5 && !featherGot) { featherGot = true; burst(player.x, row, '#d9b23a', 24, { shape: 'circle' }); tone('feather'); showToast('Pluma dorada. No sirve para nada, pero es tuya.', 'drop'); announce('Pluma dorada conseguida.'); }
+  const pi = Reglas.packageAt(L.packages, row, sup.x);
+  if (pi >= 0 && !gotPk.has(pi)) {
+    gotPk.add(pi); burst(player.x, row, '#d9a441', 18, { lift: 20 }); tone('feather');
+    const left = L.packages.length - gotPk.size;
+    if (!left) { levers.set('pk', true); shake = 4; showToast('Tienes los ' + L.packages.length + ' paquetes. La puerta de arriba se abrió.', 'drop'); announce('Tienes todos los paquetes. La puerta de arriba se abrió.'); }
+    else { showToast('Paquete ' + gotPk.size + ' de ' + L.packages.length + '.', 'drop'); announce('Paquete ' + gotPk.size + ' de ' + L.packages.length + '.'); }
+  }
   if (trail) moveFollower(row, sup.x);
   const goal = Reglas.goalAt(phase, row, player.x, nRows() - 1);
   if (goal === 'exit' || (goal === 'rescue' && !L.down)) { levelClear(); return; }

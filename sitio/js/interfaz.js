@@ -8,13 +8,14 @@ function updateHud(force) {
   if (!player || !ls) return;
   const row = Math.round(player.row), top = nRows() - 1;
   ls.best = Math.max(ls.best || 0, row);
-  const key = [L.n, row, Math.floor(ls.time), ls.falls, ls.kills, featherGot, mode, Math.ceil(cooldown * 10), combat, !!player.fall, ls.best, phase].join('|');
+  const key = [L.n, row, Math.floor(ls.time), ls.falls, ls.kills, featherGot, mode, Math.ceil(cooldown * 10), combat, !!player.fall, ls.best, phase, gotPk.size].join('|');
   if (!force && key === lastHud) return; lastHud = key;
   ui.zone.innerHTML = esc(L.name) + '<small>' + esc(mode === 'celebrate' ? '¡' + L.sibling + ' a salvo!' : (phase === 'down' ? 'De regreso · ' : '') + zoneName(row)) + '</small>';
   ui.chips.forEach((c, i) => { c.classList.toggle('current', i === L.n - 1); c.classList.toggle('done', !!(run && run.levels[i] && run.levels[i].done) && i !== L.n - 1); });
   ui.time.textContent = fmt(ls.time);
   ui.total.textContent = fmt(run.levels.reduce((s, l) => s + (l ? l.time : 0), 0));
   ui.falls.textContent = ls.falls; ui.drones.textContent = ls.kills;
+  const nPk = (L.packages || []).length; ui.rowPackages.hidden = !nPk; ui.packages.textContent = gotPk.size + ' / ' + nPk;
   ui.feather.textContent = featherGot ? 'Conseguida ✦' : 'Por descubrir'; ui.feather.classList.toggle('got', featherGot);
   // Con ida y vuelta, la barra se llena hasta la mitad al subir y se completa al bajar
   const progress = !L.down ? ls.best / top : phase === 'up' ? ls.best / top * .5 : .5 + (top - row) / top * .5;
@@ -25,11 +26,11 @@ function updateHud(force) {
   canvas.dataset.mode = mode; canvas.dataset.row = String(row); canvas.dataset.column = String(Math.round(player.x)); canvas.dataset.level = String(L.n);
 }
 function updateSide() {
-  ui.sideRibbon.textContent = 'Expediente ' + L.n + ' de 3'; ui.sideTitle.textContent = L.name; const d = phase === 'down' && L.down; ui.sideObjective.textContent = d ? d.objective : L.objective; ui.sideTip.textContent = d ? d.tip : L.tip;
+  ui.sideRibbon.textContent = 'Expediente ' + L.n + ' de ' + LEVELS.length; ui.sideTitle.textContent = L.name; const d = phase === 'down' && L.down; ui.sideObjective.textContent = d ? d.objective : L.objective; ui.sideTip.textContent = d ? d.tip : L.tip;
 }
 function updateLegend() {
   const has = k => L.rows.some(r => k === 'moving' ? r.moving : (r[k] || []).length);
-  const items = [[THEMES[L.theme].top, 'Plataforma fija', true], ['#93a6ae', 'Plataforma móvil', has('moving')], ['#6fb1cf', 'Puente con palanca', has('gate')], ['#c4d6d0', 'Vidrio agrietado', has('crumble')], ['#e3c24a', 'Placa eléctrica', has('blink')], ['#d7d3c8', 'Dron de reparto', true], ['#e0782c', 'Bandera de avance', true], ['#cdb76a', 'Pluma opcional', true]];
+  const items = [[THEMES[L.theme].top, 'Plataforma fija', true], ['#93a6ae', 'Plataforma móvil', has('moving')], ['#6fb1cf', 'Puente con palanca', has('gate')], ['#d9a441', 'Paquete: junta los 3', !!(L.packages || []).length], ['#c4d6d0', 'Vidrio agrietado', has('crumble')], ['#e3c24a', 'Placa eléctrica', has('blink')], ['#d7d3c8', 'Dron de reparto', true], ['#e0782c', 'Bandera de avance', true], ['#cdb76a', 'Pluma opcional', true]];
   ui.legend.innerHTML = items.filter(i => i[2]).map(i => `<span><i style="background:${i[0]};box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)"></i>${i[1]}</span>`).join('');
 }
 
@@ -71,13 +72,13 @@ function showStory(i) {
 function showLevelIntro(i) {
   loadLevel(i); mode = 'menu'; ui.pause.disabled = true; ui.restart.disabled = true;
   flyover = maxCam() > 40 && !reduced ? { from: maxCam(), t: -.7, d: 2.4 } : null; if (flyover) cam = maxCam();
-  showOverlay(`<p class="meta">Expediente ${L.n} de 3 · ${L.rows.length - 1} pisos${L.down ? ' · ida y vuelta' : ''}</p><span class="ribbon">Rescate: ${esc(L.sibling)}</span><h2>${esc(L.name)}</h2>
+  showOverlay(`<p class="meta">Expediente ${L.n} de ${LEVELS.length} · ${L.rows.length - 1} pisos${L.down ? ' · ida y vuelta' : ''}</p><span class="ribbon">Rescate: ${esc(L.sibling)}</span><h2>${esc(L.name)}</h2>
     <p class="lead">${esc(L.objective)}</p>
     <div class="tip-box">${ICON_BULB}<span>${esc(L.tip)}</span></div>
     <div class="actions"><button class="btn duck" data-action="play" data-primary>${ICON_PLAY}Subir</button></div>`);
 }
 function showSummary() {
-  mode = 'menu'; const i = L.n - 1, last = i === 2, st = STORY.rescue[i];
+  mode = 'menu'; const i = L.n - 1, last = i === LEVELS.length - 1, st = STORY.rescue[i];
   const stats = `<div class="mini-stats"><div><strong>${fmt(ls.time)}</strong>Tiempo</div><div><strong>${ls.falls}</strong>Muertes</div><div><strong>${ls.kills}</strong>Drones</div><div><strong>${ls.feather ? '✦' : '—'}</strong>Pluma</div></div>`;
   if (!last) {
     showOverlay(`<p class="meta">Expediente ${L.n} · cerrado</p><span class="ribbon green">Rescatada: ${esc(L.sibling)}</span><canvas class="vignette" data-vignette aria-hidden="true"></canvas>

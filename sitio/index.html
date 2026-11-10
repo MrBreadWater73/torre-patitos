@@ -31,8 +31,8 @@
     <div class="play">
       <section class="game-card" aria-label="Juego">
         <div class="game-toolbar">
-          <div class="chapter-chips">
-            <span class="chip current" id="chip1" title="Capítulo 1">1</span><span class="chip" id="chip2" title="Capítulo 2">2</span><span class="chip" id="chip3" title="Capítulo 3">3</span>
+          <div class="chapter-chips" id="chips">
+            
             <div class="zone" id="zoneLabel">Torre del parque<small>Planta baja</small></div>
           </div>
           <div class="tool-buttons">
@@ -71,6 +71,7 @@
           <div class="row"><span>Tiempo total</span><strong id="statTotal">00:00</strong></div>
           <div class="row"><span>Muertes</span><strong id="statFalls">0</strong></div>
           <div class="row"><span>Drones apartados</span><strong id="statDrones">0</strong></div>
+          <div class="row" id="rowPackages"><span>Paquetes</span><strong id="statPackages">0 / 3</strong></div>
           <div class="row"><span>Pluma dorada</span><strong class="pill" id="statFeather">Por descubrir</strong></div>
         </section>
         <section class="card controls-card">
@@ -107,6 +108,7 @@
 
 <script src="js/base.js"></script>
 <script src="js/reglas.js"></script>
+<script src="js/niveles.js"></script>
 <script src="js/mundo.js"></script>
 <script src="js/estado.js"></script>
 <script src="js/nivel.js"></script>

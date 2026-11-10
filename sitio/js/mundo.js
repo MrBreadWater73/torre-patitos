@@ -10,64 +10,6 @@ const THEMES = {
 };
 const GRAF = (() => { const r = rng(21), cols = ['rgba(196,64,74,.5)', 'rgba(64,120,170,.5)', 'rgba(226,189,72,.55)', 'rgba(230,230,220,.45)']; return Array.from({ length: 9 }, (_, i) => ({ row: 1 + r() * 8, x: -.2 + r() * 4.6, c: cols[i % cols.length], pts: Array.from({ length: 6 }, () => [r() * 46 - 23, r() * 22 - 11]) })); })();
 
-const LEVELS = [
-  { n: 1, name: 'Torre del parque', theme: 'morning', sibling: 'Tina', sib: 'phone', tutorial: 2, bubble: 'Llegas tarde.',
-    objective: 'Baja a Tina de la torre antes de que se le acabe la batería.',
-    tip: 'El golpe mueve palancas: la azul enciende el puente azul. Las banderas guardan tu avance. Los drones de reparto van y vienen con la puntualidad que no tuvieron con tu nido: espera o reclámales con un golpe.',
-    zones: [[2, 'Planta baja'], [5, 'Zona de cruce'], [6, 'Plataforma móvil'], [99, 'Azotea']],
-    rows: [
-      { cells: [0, 1, 2, 3, 4] }, { cells: [1, 2, 3] }, { gate: [{ x: 1, g: 'a' }, { x: 2, g: 'a' }, { x: 3, g: 'a' }], checkpoint: true }, { cells: [0, 1, 2, 3, 4] },
-      { cells: [1, 2, 3], checkpoint: true }, { cells: [2, 3, 4] }, { moving: { c: 2, a: 1.05, s: .9, p: -1.15 } },
-      { cells: [1, 2, 3], checkpoint: true }, { cells: [1, 3] }, { cells: [1, 2, 3] }
-    ],
-    feather: { row: 5, x: 4 },
-    levers: [{ row: 1, x: .1, g: 'a' }],
-    drones: [{ row: 3, speed: .92, phase: 1.9, span: 2.65, center: 2 }, { row: 5, speed: 1.1, phase: -.9, span: .85, center: 3.7 }, { row: 8, speed: 1.35, phase: .35, span: 2.65, center: 2 }],
-    // La bajada: misma torre, de noche. Se cayeron plataformas y hay más drones.
-    down: {
-      objective: 'Baja con Tina hasta la planta baja. Ya es de noche.',
-      tip: 'Bajar es otro oficio: puedes dejarte caer hasta 3 pisos si hay algo abajo que te reciba. Las banderas ahora guardan tu avance hacia abajo. Tina te sigue; no ayuda, pero graba.',
-      hello: 'Ya era hora.',
-      gone: [[8, 1], [5, 2], [3, 0], [3, 4], [1, 2]],
-      drones: [{ row: 8, speed: 1.35, phase: .35, span: 2.65, center: 2 }, { row: 6, speed: 1.05, phase: 2.4, span: 2.2, center: 2 }, { row: 5, speed: 1.1, phase: -.9, span: .85, center: 3.7 }, { row: 3, speed: 1.15, phase: 1.9, span: 2.65, center: 2 }, { row: 1, speed: .9, phase: .6, span: 2.3, center: 2 }]
-    },
-    quips: ['Esto va para mis historias.', 'Más lento, se mueve la toma.', 'Sin señal. Qué horror.', 'Pon cara de héroe.', 'Voy en vivo, no me empujes.']
-  },
-  { n: 2, name: 'Vivero abandonado', theme: 'greenhouse', sibling: 'Lalo', sib: 'shades', tutorial: 2, bubble: 'Aquí vivo ahora.',
-    objective: 'Convence a Lalo de que no puede vivir en una maceta.',
-    tip: 'El vidrio agrietado aguanta lo mismo que tus planes: menos de un segundo. Pisa y sigue. Se repone solo, a diferencia de ti.',
-    zones: [[2, 'Recepción'], [4, 'Vidrios flojos'], [7, 'Las macetas'], [99, 'Techo roto']],
-    rows: [
-      { cells: [0, 1, 2, 3, 4] }, { cells: [1, 3], crumble: [2] }, { cells: [0, 1, 2, 3, 4], checkpoint: true }, { crumble: [1, 2, 3] },
-      { cells: [1, 2, 3], checkpoint: true }, { moving: { c: 2, a: 1.2, s: 1, p: .3 } }, { cells: [0, 1], crumble: [2, 3, 4] },
-      { cells: [1, 2, 3, 4], checkpoint: true }, { crumble: [1, 2, 3] }, { moving: { c: 2, a: 1.3, s: 1.15, p: 2 } },
-      { cells: [2], crumble: [1, 3] }, { cells: [1, 2, 3] }
-    ],
-    feather: { row: 6, x: 4 },
-    drones: [{ row: 3, speed: .85, phase: .4, span: 2.6, center: 2 }, { row: 8, speed: 1.2, phase: 2.2, span: 2.65, center: 2 }, { row: 10, speed: 1.5, phase: 0, span: 1.15, center: 2 }]
-  },
-  { n: 3, name: 'Antena de Entregas Ya!', theme: 'storm', sibling: 'Mimi', sib: 'foil', tutorial: 2, bubble: '¡Nos escuchan!',
-    objective: 'Baja a Mimi de la antena antes de que descifre algo.',
-    tip: 'Las placas eléctricas se prenden y se apagan según el humor del servidor. Parpadean antes de apagarse y muestran cuánto falta para volver. Salta cuando estén encendidas.',
-    zones: [[3, 'Base de la antena'], [6, 'Primeros relámpagos'], [9, 'Cables altos'], [99, 'Punta de la antena']],
-    rows: [
-      { cells: [0, 1, 2, 3, 4] }, { cells: [1, 2, 3] },
-      { blink: [{ x: 1, o: 0 }, { x: 2, o: 0 }, { x: 3, o: 0 }], period: 2.6, on: 1.7 },
-      { cells: [1, 2, 3], checkpoint: true },
-      { blink: [{ x: 0, o: 0 }, { x: 1, o: .6 }, { x: 2, o: 1.2 }, { x: 3, o: 1.8 }, { x: 4, o: 2.4 }], period: 3.2, on: 2 },
-      { crumble: [1, 2, 3] }, { cells: [1, 2, 3], checkpoint: true }, { moving: { c: 2, a: 1.3, s: 1.05, p: 1 } },
-      { blink: [{ x: 1, o: 0 }, { x: 2, o: 1.2 }, { x: 3, o: 0 }], period: 2.4, on: 1.35 },
-      { cells: [1, 2, 3], checkpoint: true },
-      { cells: [1, 2], crumble: [3], blink: [{ x: 4, o: .4 }], period: 2.8, on: 1.4 },
-      { moving: { c: 2.3, a: 1.5, s: 1.3, p: 2.4 } },
-      { blink: [{ x: 1, o: 0 }, { x: 2, o: .35 }, { x: 3, o: .7 }], period: 2.2, on: 1.4 },
-      { cells: [1, 2, 3] }
-    ],
-    feather: { row: 10, x: 4 },
-    drones: [{ row: 5, speed: 1, phase: .8, span: 2.6, center: 2 }, { row: 8, speed: 1.3, phase: -.6, span: 2.6, center: 2 }, { row: 12, speed: 1.6, phase: 1.5, span: 2.7, center: 2 }]
-  }
-];
-
 const STORY = {
   intro: [
     { scene: 'nest', art: 'intro1', meta: 'Estanque municipal · 19:30', title: 'La familia Pata', text: 'La familia Pata vive en el estanque municipal, entre un carrito de súper y una bolsa que lleva ahí desde 2019. Pipo es el menor de cuatro. No sabe volar. Tampoco le ha hecho falta.' },
