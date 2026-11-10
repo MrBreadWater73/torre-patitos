@@ -97,6 +97,14 @@ svg{display:block}
 .scene > canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation;outline:none}
 .overlay{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding:14px;background:linear-gradient(180deg,rgba(12,12,14,0) 30%,rgba(12,12,14,.5));pointer-events:none}
 .overlay.center{align-items:center;background:rgba(12,12,14,.42)}
+/* Pantalla completa: toda la tarjeta (barra, escenario y controles) ocupa la ventana.
+   El escenario conserva la proporción 760:840 y se centra; la altura manda y el ancho se calcula. */
+.game-card.is-fullscreen{position:fixed;inset:0;z-index:50;width:100%;height:100%;max-width:none;min-width:0;margin:0;border:0;border-radius:0;box-shadow:none;display:grid;grid-template-rows:auto minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);justify-items:stretch;overflow:hidden;background:radial-gradient(ellipse 60% 50% at 12% 8%,rgba(200,98,31,.38),transparent 70%),radial-gradient(ellipse 55% 60% at 92% 96%,rgba(43,111,134,.42),transparent 70%),radial-gradient(ellipse 45% 40% at 60% 50%,rgba(47,107,87,.18),transparent 75%),linear-gradient(180deg,#2a2c2f 0%,#1c1d1f 100%)}
+.game-card.is-fullscreen::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background-image:radial-gradient(rgba(233,230,222,.07) 1px,transparent 1.2px);background-size:22px 22px;mask-image:linear-gradient(180deg,transparent,#000 40%,#000 60%,transparent)}
+.game-card.is-fullscreen .scene{justify-self:center;height:min(100%,calc(100vw * 840 / 760));width:auto;aspect-ratio:760/840;max-width:100%}
+.game-card.is-fullscreen .game-toolbar{border-bottom-color:transparent;background:var(--surface)}
+.game-card.is-fullscreen .game-footer{background:var(--surface)}
+#fullscreenBtn.on{color:var(--ink);background:var(--duck)}
 .overlay-card{pointer-events:auto;width:min(430px,100%);max-height:100%;overflow:auto;overscroll-behavior:contain;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;box-shadow:0 22px 50px -18px rgba(0,0,0,.6);animation:cardIn .42s cubic-bezier(.2,.9,.25,1.1) both}
 .overlay-card.wide{width:min(500px,100%)}
 @keyframes cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
@@ -220,6 +228,26 @@ kbd{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--ink)
 .bar .tr{height:12px;background:var(--bar-track);border-radius:2px;overflow:hidden}
 .bar .tr i{display:block;height:100%;background:var(--bar);border-radius:0 4px 4px 0;min-width:2px;transition:width .5s}
 .bar .val{text-align:right;font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums}
+.pie{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.pie svg{width:132px;height:132px;flex:none;overflow:visible}
+.pie svg path,.pie svg circle.slice{stroke:var(--surface);stroke-width:2;transition:opacity .2s}
+.pie svg:hover path{opacity:.55}.pie svg path:hover{opacity:1}
+.pie .tot{font-family:var(--font-display);font-weight:800;font-size:26px;fill:var(--ink)}
+.pie .tot-l{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;fill:var(--muted)}
+.legend{list-style:none;margin:0;padding:0;display:grid;gap:6px;flex:1;min-width:150px;font-size:13px}
+.legend li{display:grid;grid-template-columns:10px minmax(0,1fr) auto auto;gap:8px;align-items:center}
+.legend i{width:10px;height:10px;border-radius:2px}
+.legend b{font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.legend small{font-family:var(--font-mono);color:var(--muted);font-size:11.5px;min-width:34px;text-align:right}
+.pie-empty{font-size:12.5px;color:var(--muted);margin:0}
+.cols{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:18px;border-bottom:1px solid var(--line)}
+.col{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
+.col .v{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.col .c{width:min(100%,46px);background:var(--bar);border-radius:4px 4px 0 0;min-height:2px;transition:height .5s}
+.col-labs{display:flex;gap:10px;margin-top:6px}
+.col-labs span{flex:1;min-width:0;text-align:center;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chart-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:520px){.chart-pair{grid-template-columns:minmax(0,1fr)}}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:500;padding:0 8px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -276,7 +304,7 @@ tr.me td:first-child::after{content:" · tú";color:var(--sodium)}
 }
 @media (prefers-reduced-motion:reduce){
   .overlay-card,.story-text,.toast span{animation:none}
-  .fill,.bar .tr i{transition:none}
+  .fill,.bar .tr i,.col .c,.pie svg path{transition:none}
 }
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
@@ -307,6 +335,7 @@ tr.me td:first-child::after{content:" · tú";color:var(--sodium)}
             <button class="icon-btn" id="soundBtn" aria-pressed="false" aria-label="Activar sonido" title="Activar sonido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path id="soundPath" d="m16 9 5 6m0-6-5 6"/></svg></button>
             <button class="icon-btn" id="pauseBtn" aria-label="Pausar" title="Pausar (P)" disabled><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
             <button class="icon-btn" id="restartBtn" aria-label="Reiniciar capítulo" title="Reiniciar capítulo (R)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 11a8 8 0 1 1 2 7M4 4v7h7"/></svg></button>
+            <button class="icon-btn" id="fullscreenBtn" aria-pressed="false" aria-label="Pantalla completa" title="Pantalla completa (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
           </div>
         </div>
         <div class="scene" id="scene">
@@ -347,6 +376,7 @@ tr.me td:first-child::after{content:" · tú";color:var(--sodium)}
           <div class="ctrl"><div class="keys"><kbd>←</kbd><kbd>→</kbd><kbd>A</kbd><kbd>D</kbd></div><span>Saltar a los lados</span></div>
           <div class="ctrl"><div class="keys"><kbd>J</kbd><kbd>X</kbd></div><span>Golpear un dron cercano</span></div>
           <div class="ctrl"><div class="keys"><kbd>P</kbd><kbd>R</kbd></div><span>Pausa · reiniciar capítulo</span></div>
+          <div class="ctrl" id="fullscreenKeyRow"><div class="keys"><kbd>F</kbd></div><span>Pantalla completa</span></div>
           <div class="toggle"><label><input type="checkbox" id="combatToggle" checked>Golpe secundario</label><small>Desactívalo para resolver todo a saltos, como un pato pacifista. Cambiarlo reinicia el capítulo.</small></div>
         </section>
         <section class="card">
@@ -967,10 +997,24 @@ function drawScene(kind, sib) {
   }
 }
 function drawMiniDrone(x, y) { g.save(); g.translate(x, y); g.scale(.9, .9); drawDroneBody(1); g.restore(); }
+/* Ilustraciones opcionales: se precargan al arrancar para que al abrir una viñeta ya estén listas */
+const artCache = {};
+function preloadArt() {
+  Object.values(CONFIG.ART).forEach(src => {
+    if (!src || artCache[src]) return;
+    const img = artCache[src] = new Image();
+    img.alt = ''; img.decoding = 'async'; img.src = src;
+    img.decode().catch(() => { /* si falla, mountVignette usa el dibujo del juego */ });
+  });
+}
 function mountVignette(scene, art, sib) {
   vignette = null;
   const slot = ui.card.querySelector('[data-vignette]'); if (!slot) return;
   const src = CONFIG.ART[art];
+  const cached = src && artCache[src];
+  if (cached && cached.complete && cached.naturalWidth) { // ya en memoria: mostrar la imagen sin pasar por el canvas
+    const el = cached.cloneNode(); el.className = 'vignette'; slot.replaceWith(el); return;
+  }
   if (src) { const img = new Image(); img.className = 'vignette'; img.alt = ''; img.onload = () => { slot.replaceWith(img); vignette = null; }; img.src = src; }
   const vc = slot; const dpr = Math.min(window.devicePixelRatio || 1, 2); vc.width = 520 * dpr; vc.height = 230 * dpr;
   vignette = { el: vc, ctx: vc.getContext('2d'), dpr, scene, sib };
@@ -1358,6 +1402,35 @@ document.querySelectorAll('[data-move]').forEach(b => b.addEventListener('click'
 ui.punch.addEventListener('click', () => { noteInput('pad'); attack(); });
 ui.pause.addEventListener('click', pause);
 ui.restart.addEventListener('click', restartLevel);
+
+/* Pantalla completa: se pone en pantalla completa la tarjeta entera para que sigan visibles los controles táctiles. */
+const gameCard = $('.game-card'), fullscreenBtn = $('#fullscreenBtn');
+const fullscreenEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+const fullscreenSupported = !!(gameCard.requestFullscreen || gameCard.webkitRequestFullscreen);
+function toggleFullscreen() {
+  if (fullscreenEl()) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); }
+    return;
+  }
+  const request = gameCard.requestFullscreen || gameCard.webkitRequestFullscreen;
+  if (request) { const p = request.call(gameCard); if (p && p.catch) p.catch(() => {}); }
+}
+function updateFullscreenUI() {
+  const on = fullscreenEl() === gameCard;
+  gameCard.classList.toggle('is-fullscreen', on);
+  fullscreenBtn.classList.toggle('on', on); fullscreenBtn.setAttribute('aria-pressed', String(on));
+  const label = on ? 'Salir de pantalla completa' : 'Pantalla completa'; fullscreenBtn.setAttribute('aria-label', label); fullscreenBtn.title = on ? label : 'Pantalla completa (F)';
+  announce(on ? 'Pantalla completa activada.' : 'Pantalla completa desactivada.');
+}
+if (fullscreenSupported) {
+  fullscreenBtn.addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', updateFullscreenUI);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+} else {
+  fullscreenBtn.hidden = true; $('#fullscreenKeyRow').hidden = true;
+}
+
 ui.sound.addEventListener('click', () => { sound = !sound; store.set('torrePatitos.sound', sound); updateSoundUI(); if (sound) tone('checkpoint'); });
 ui.combat.addEventListener('change', e => {
   combat = e.target.checked; if (run) run.combat = run.combat && combat;
@@ -1379,6 +1452,7 @@ document.addEventListener('keydown', e => {
   }
   if (k === 'p' || k === 'escape') { e.preventDefault(); pause(); return; }
   if (k === 'r') { e.preventDefault(); restartLevel(); return; }
+  if (k === 'f' && fullscreenSupported) { e.preventDefault(); toggleFullscreen(); return; }
   if (k === 'j' || k === 'x') { e.preventDefault(); if (!e.repeat) { noteInput('key'); attack(); } return; }
   if (!KEYMAP[k]) return;
   if (k === ' ' && tag === 'BUTTON') return;
@@ -1484,6 +1558,9 @@ const sum = a => a.reduce((s, v) => s + v, 0), avg = a => a.length ? sum(a) / a.
 const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
 let heatLevel = 0;
+const CAUSE_COLORS = { hueco: 'var(--pond)', dron: 'var(--danger)', vidrio: 'var(--reed)', apagon: 'var(--duck)' };
+const CHAPTER_COLORS = ['var(--pond)', 'var(--reed)', 'var(--sodium)'];
+const EMOTION_COLORS = ['var(--pond)', 'var(--sodium)', 'var(--reed)', 'var(--danger)', 'var(--muted)'];
 function compute(runs) {
   const lv = i => runs.map(r => r.levels[i]).filter(Boolean);
   const per = [0, 1, 2].map(i => { const all = lv(i), done = all.filter(l => l.done); return { started: all.length, done: done.length, time: median(done.map(l => l.time)), falls: avg(all.map(l => l.falls || 0)), feather: pct(done.filter(l => l.feather).length, done.length), kills: avg(all.map(l => l.kills || 0)), restarts: avg(all.map(l => l.restarts || 0)) }; });
@@ -1493,6 +1570,7 @@ function compute(runs) {
     runs: runs.length, players: new Set(runs.filter(r => r.nick).map(r => String(r.nick).toLowerCase())).size, per, finished,
     medTotal: median(finished.map(r => r.totalTime)), fallsAvg: avg(runs.map(r => sum(r.levels.filter(Boolean).map(l => l.falls || 0)))),
     surveys: surveys.length, fun: avg(surveys.map(s => s.fun)), clarity: avg(surveys.map(s => s.clarity)),
+    causes: runs.reduce((c, r) => { r.levels.forEach(l => (l && l.deaths || []).forEach(d => { c[d[2]] = (c[d[2]] || 0) + 1; })); return c; }, {}),
     difficulty: count('difficulty', 5), favorite: count('favorite', 3), emotion: count('emotion', 5),
     comments: runs.filter(r => r.survey && r.survey.comment).sort((a, b) => (b.survey.at || '').localeCompare(a.survey.at || '')).slice(0, 8),
     board: finished.filter(r => r.nick).sort((a, b) => a.totalTime - b.totalTime).slice(0, 10)
@@ -1501,6 +1579,27 @@ function compute(runs) {
 function bars(items, fmtv) {
   const max = Math.max(1, ...items.map(i => i.value));
   return `<div class="bars">${items.map(i => `<div class="bar" data-tip="${esc(i.tip || (i.label + ': ' + fmtv(i.value)))}"><span class="lab">${esc(i.label)}</span><span class="tr"><i style="width:${(i.value / max * 100).toFixed(1)}%"></i></span><span class="val">${fmtv(i.value)}</span></div>`).join('')}</div>`;
+}
+/* Gráfica de pastel (dona): items = [{ label, value, color }] */
+function pie(items, totalLabel) {
+  const total = sum(items.map(i => i.value));
+  if (!total) return '<p class="pie-empty">Sin datos todavía.</p>';
+  const R = 60, r0 = 34, C = 66, pt = (a, rad) => (C + rad * Math.sin(a)).toFixed(2) + ' ' + (C - rad * Math.cos(a)).toFixed(2);
+  let a = 0;
+  const slices = items.filter(i => i.value > 0).map(i => {
+    const tip = esc(i.label + ': ' + i.value + ' (' + pct(i.value, total) + '%)');
+    if (i.value === total) return `<path data-tip="${tip}" style="fill:${i.color}" fill-rule="evenodd" d="M${C} ${C - R}A${R} ${R} 0 1 1 ${C - .01} ${C - R}ZM${C} ${C - r0}A${r0} ${r0} 0 1 0 ${C + .01} ${C - r0}Z"/>`;
+    const a1 = a + i.value / total * Math.PI * 2, big = a1 - a > Math.PI ? 1 : 0;
+    const d = `M${pt(a, R)}A${R} ${R} 0 ${big} 1 ${pt(a1, R)}L${pt(a1, r0)}A${r0} ${r0} 0 ${big} 0 ${pt(a, r0)}Z`; a = a1;
+    return `<path data-tip="${tip}" style="fill:${i.color}" d="${d}"/>`;
+  }).join('');
+  return `<div class="pie"><svg viewBox="0 0 132 132" role="img" aria-label="${esc(items.map(i => i.label + ' ' + i.value).join(', '))}">${slices}<text class="tot" x="${C}" y="${C + 4}" text-anchor="middle">${total}</text><text class="tot-l" x="${C}" y="${C + 18}" text-anchor="middle">${esc(totalLabel)}</text></svg>
+    <ul class="legend">${items.map(i => `<li data-tip="${esc(i.label + ': ' + i.value + ' (' + pct(i.value, total) + '%)')}"><i style="background:${i.color}"></i><span>${esc(i.label)}</span><b>${i.value}</b><small>${pct(i.value, total)}%</small></li>`).join('')}</ul></div>`;
+}
+/* Gráfica de columnas: items = [{ label, value, tip? }] */
+function cols(items, fmtv, color) {
+  const max = Math.max(1e-9, ...items.map(i => i.value || 0));
+  return `<div class="cols">${items.map(i => `<div class="col" data-tip="${esc(i.tip || (i.label + ': ' + (i.value == null ? '—' : fmtv(i.value))))}"><span class="v">${i.value == null ? '—' : fmtv(i.value)}</span><span class="c" style="height:${((i.value || 0) / max * 100 * .82).toFixed(1)}%${color ? ';background:' + color : ''}"></span></div>`).join('')}</div><div class="col-labs">${items.map(i => `<span>${esc(i.label)}</span>`).join('')}</div>`;
 }
 function renderStats() {
   const body = $('#statsBody'), badge = $('#sourceBadge');
@@ -1530,6 +1629,17 @@ function renderStats() {
     </section>
   </div>
   <div class="grid2">
+    <section class="panel"><h3>Por capítulo, en gráfica</h3><p class="sub">Muertes promedio por partida y tiempo mediano de quienes lo terminaron.</p>
+      <div class="chart-pair">
+        <div><h4>Muertes promedio</h4>${cols(s.per.map((p, i) => ({ label: 'Cap. ' + (i + 1), value: p.started ? p.falls : null, tip: LEVELS[i].name + ': ' + n1(p.falls) + ' muertes en promedio' })), n1, 'var(--danger)')}</div>
+        <div><h4>Tiempo mediano</h4>${cols(s.per.map((p, i) => ({ label: 'Cap. ' + (i + 1), value: p.time, tip: LEVELS[i].name + ': ' + (p.time == null ? 'nadie lo ha terminado' : fmt(p.time)) })), fmt, 'var(--pond)')}</div>
+      </div>
+    </section>
+    <section class="panel"><h3>¿De qué muere la gente?</h3><p class="sub">Todas las muertes registradas en los tres capítulos, por causa.</p>
+      ${pie(Object.keys(CAUSES).map(k => ({ label: CAUSES[k], value: s.causes[k] || 0, color: CAUSE_COLORS[k] })), 'muertes')}
+    </section>
+  </div>
+  <div class="grid2">
     <section class="panel"><h3>Dónde muere la gente</h3><p class="sub">Cada punto es un lugar donde alguien perdió a Pipo; más grande = más muertes. Las caídas de hasta 3 pisos no cuentan.</p>
       <div class="seg" role="group" aria-label="Capítulo del mapa">${LEVELS.map((l, i) => `<button data-heat="${i}" aria-pressed="${i === heatLevel}">Cap. ${i + 1}</button>`).join('')}</div>
       <canvas class="heat" id="heatCanvas" width="560" height="600" aria-label="Mapa de muertes del capítulo ${heatLevel + 1}"></canvas>
@@ -1537,9 +1647,9 @@ function renderStats() {
     </section>
     <section class="panel"><h3>Encuesta</h3><p class="sub">${s.surveys} respuesta${s.surveys === 1 ? '' : 's'}.</p>
       <div class="stat-pair"><div>Diversión<strong>${n1(s.fun)}<small> / 5</small></strong></div><div>Claridad de controles<strong>${n1(s.clarity)}<small> / 5</small></strong></div></div>
-      <h4>Dificultad</h4>${bars(SURVEY[1].opts.map((o, k) => ({ label: o, value: s.difficulty[k] })), v => v)}
-      <h4>Capítulo favorito</h4>${bars(SURVEY[2].opts.map((o, k) => ({ label: o, value: s.favorite[k] })), v => v)}
-      <h4>Emoción principal</h4>${bars(SURVEY[4].opts.map((o, k) => ({ label: o, value: s.emotion[k] })), v => v)}
+      <h4>Dificultad</h4>${cols(SURVEY[1].opts.map((o, k) => ({ label: o, value: s.difficulty[k], tip: o + ': ' + s.difficulty[k] + ' (' + pct(s.difficulty[k], s.surveys) + '%)' })), v => v)}
+      <h4>Capítulo favorito</h4>${pie(SURVEY[2].opts.map((o, k) => ({ label: o, value: s.favorite[k], color: CHAPTER_COLORS[k] })), 'votos')}
+      <h4>Emoción principal</h4>${pie(SURVEY[4].opts.map((o, k) => ({ label: o, value: s.emotion[k], color: EMOTION_COLORS[k] })), 'votos')}
     </section>
   </div>
   <div class="grid2">
@@ -1628,6 +1738,7 @@ if (QA) window.towerQA = {
    Arranque
    ============================================================ */
 updateSoundUI();
+preloadArt();
 new ResizeObserver(resize).observe(canvas);
 if (location.hash === '#estadisticas') setView('stats', true);
 showTitle(); resize(); Store.init();
