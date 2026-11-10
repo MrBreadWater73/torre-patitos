@@ -1,2 +1,4 @@
 # Local AI tooling
 .atl/
+.playwright-mcp/
+.codegraph/

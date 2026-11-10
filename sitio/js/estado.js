@@ -1,0 +1,55 @@
+'use strict';
+
+/* ============================================================
+   Estado
+   ============================================================ */
+const ui = {
+  overlay: $('#overlay'), card: $('#overlayCard'), zone: $('#zoneLabel'), chips: [1, 2, 3].map(i => $('#chip' + i)),
+  sound: $('#soundBtn'), pause: $('#pauseBtn'), restart: $('#restartBtn'), punch: $('#punchBtn'),
+  height: $('#heightLabel'), fill: $('#progressFill'), track: $('#progressTrack'),
+  sideRibbon: $('#sideRibbon'), sideTitle: $('#sideTitle'), sideObjective: $('#sideObjective'), sideTip: $('#sideTip'),
+  time: $('#statTime'), total: $('#statTotal'), falls: $('#statFalls'), drones: $('#statDrones'), feather: $('#statFeather'),
+  legend: $('#legend'), live: $('#live'), combat: $('#combatToggle'), tooltip: $('#tooltip')
+};
+
+let L = LEVELS[0];
+let mode = 'menu';           // menu | playing | paused | celebrate
+let view = 'play';
+let clock = 0, amb = 0, cam = 0, flyover = null, shake = 0, flash = 0, nextFlash = 5;
+let player, checkpoint, drones = [], crumbles = new Map(), flags = new Map(), featherGot = false;
+let particles = [], hover = null, hitAreas = [], cooldown = 0, punch = null, pending = null, celebrate = null;
+let blinkEye = { next: 2.5, until: 0 }, sibBlink = { next: 3.2, until: 0 };
+let sound = store.get('torrePatitos.sound', false), audio = null, combat = true;
+let run = null, ls = null, lastHud = '', lastStamp = 0, vignette = null, storyIndex = 0;
+
+/* ============================================================
+   Sonido (síntesis simple, sin archivos)
+   ============================================================ */
+const TONES = {
+  hop: [[520, 700, .09, 'sine', .035]], land: [[200, 130, .06, 'triangle', .04]],
+  fall: [[300, 90, .32, 'sine', .05]], checkpoint: [[600, 840, .14, 'sine', .04], [840, 1060, .16, 'sine', .035, .11]],
+  feather: [[880, 1320, .18, 'sine', .04], [1320, 1760, .24, 'sine', .03, .13]], punch: [[160, 330, .08, 'square', .02]],
+  destroy: [[420, 80, .22, 'sawtooth', .02]], crack: [[1500, 700, .08, 'triangle', .03], [900, 450, .1, 'triangle', .025, .07]],
+  thunder: [[75, 38, .9, 'sine', .07]], click: [[700, 780, .05, 'sine', .025]],
+  whoosh: [[620, 220, .35, 'triangle', .025]], thud: [[140, 55, .18, 'sine', .07], [90, 40, .12, 'triangle', .04, .02]],
+  win: [[523, 523, .13, 'sine', .045], [659, 659, .13, 'sine', .045, .13], [784, 784, .13, 'sine', .045, .26], [1047, 1047, .34, 'sine', .045, .39]]
+};
+function tone(kind) {
+  if (!sound) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    for (const [a, b, d, type, vol, off = 0] of TONES[kind] || TONES.hop) {
+      const o = audio.createOscillator(), gn = audio.createGain(), n = audio.currentTime + off;
+      o.type = type; o.frequency.setValueAtTime(a, n); o.frequency.exponentialRampToValueAtTime(b, n + d);
+      gn.gain.setValueAtTime(.0001, n); gn.gain.exponentialRampToValueAtTime(vol, n + .012); gn.gain.exponentialRampToValueAtTime(.0001, n + d);
+      o.connect(gn); gn.connect(audio.destination); o.start(n); o.stop(n + d + .03);
+    }
+  } catch (e) { /* sin audio */ }
+}
+function updateSoundUI() {
+  ui.sound.classList.toggle('on', sound); ui.sound.setAttribute('aria-pressed', String(sound));
+  const label = sound ? 'Silenciar' : 'Activar sonido'; ui.sound.setAttribute('aria-label', label); ui.sound.title = label;
+  $('#soundPath').setAttribute('d', sound ? 'M16 8q5 4 0 8M19 5q8 7 0 14' : 'm16 9 5 6m0-6-5 6');
+}
+const announce = t => { ui.live.textContent = t; };

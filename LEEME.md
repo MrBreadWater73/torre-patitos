@@ -3,7 +3,11 @@
 ```
 torre-patitos/
 ├── sitio/              ← esta carpeta es la que subes a Netlify
-│   ├── index.html      el juego completo (HTML, CSS y JS en un archivo)
+│   ├── index.html      la página del juego (solo el HTML)
+│   ├── css/juego.css   estilos
+│   ├── js/             el código, en archivos que se cargan en este orden:
+│   │                   base, mundo, estado, nivel, dibujo, partida,
+│   │                   interfaz, datos, estadisticas, arranque
 │   ├── config.js       aquí pegas la URL y la llave de Supabase
 │   ├── netlify.toml    configuración del sitio estático
 │   └── arte/           (opcional) ilustraciones generadas con Gemini
