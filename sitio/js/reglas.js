@@ -216,6 +216,105 @@ const Reglas = {
      `towerQA.verifyTowers()` en el navegador (con ?qa) y actualizar esta lista. */
   TOWER_SEEDS: [102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 132, 133, 135, 136, 137, 138, 139, 140, 141, 142, 143, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170],
   towerSeed: n => Reglas.TOWER_SEEDS[(n >>> 0) % Reglas.TOWER_SEEDS.length],
+  /* ----------------------------------------------------------
+     Modo infinito: una torre sin fin que se arma por tramos de 5 pisos (más un piso de descanso con bandera),
+     un poco más difícil cada tres tramos. El apagón sube desde abajo y la partida acaba cuando alcanza a Pipo.
+     ---------------------------------------------------------- */
+  ENDLESS: { start: -1.5, delay: 4, base: .12, grow: .002, cap: .35 },   // pisos y pisos por segundo
+  /* Piso hasta el que llegó el apagón a los t segundos: espera, sube cada vez más rápido y se queda en `cap` */
+  riseLine(t, scale = 1) {
+    const c = Reglas.ENDLESS, tt = Math.max(0, t - c.delay), tc = (c.cap - c.base) / c.grow;
+    const dist = tt <= tc ? c.base * tt + c.grow * tt * tt / 2 : c.base * tc + c.grow * tc * tc / 2 + c.cap * (tt - tc);
+    return c.start + dist * scale;
+  },
+  /* Un piso ya no existe cuando el apagón lo pasó por más de medio piso; a Pipo lo alcanza con la misma regla */
+  riseGone: (line, row) => row < line - .5,
+  endlessTier: i => Math.min(5, Math.floor(i / 3)),
+  ENDLESS_KINDS: [
+    ['plain', 'plain', 'plain', 'glass', 'moving'],
+    ['plain', 'plain', 'glass', 'moving', 'blink', 'belt'],
+    ['plain', 'glass', 'moving', 'blink', 'belt', 'wind'],
+    ['plain', 'glass', 'moving', 'blink', 'belt', 'wind', 'ice'],
+    ['plain', 'glass', 'moving', 'blink', 'belt', 'wind', 'ice', 'glass'],
+    ['glass', 'moving', 'blink', 'belt', 'wind', 'ice']
+  ],
+  endlessDraft(seed, tier) {
+    const r = Reglas.rng(seed), int = n => Math.floor(r() * n), pick = a => a[int(a.length)], kinds = Reglas.ENDLESS_KINDS[tier];
+    const some = n => { const c = [0, 1, 2, 3, 4]; while (c.length > n) c.splice(int(c.length), 1); return c; };
+    const rows = [{ cells: [0, 1, 2, 3, 4] }]; let last = '';
+    for (let i = 1; i <= 5; i++) {
+      let k = pick(kinds); if (k === last && k !== 'plain') k = 'plain';
+      if (k === 'plain') rows.push({ cells: some(Math.max(3, 5 - int(1 + Math.ceil(tier / 2)))) });
+      else if (k === 'glass') { const c = some(4), g = c.splice(int(c.length), 1 + int(2)); rows.push({ cells: c, crumble: g }); }
+      else if (k === 'blink') { const x0 = int(3); rows.push({ blink: [0, 1, 2].map(j => ({ x: x0 + j, o: 0 })), period: +(2.5 + r() * .8).toFixed(2), on: +(1.5 + r() * .3).toFixed(2) }); }   // juntas: con desfase puede no haber cómo cruzarlas
+      else if (k === 'moving') rows.push({ moving: { c: 2, a: +(1.1 + r() * .4).toFixed(2), s: +(.9 + r() * .4).toFixed(2), p: +(r() * 6).toFixed(2) } });
+      else if (k === 'wind') rows.push({ cells: [0, 1, 2, 3, 4], wind: { dir: pick([-1, 1]), period: +(2.7 + r() * .8).toFixed(2), on: 1.1, o: +(r() * 2).toFixed(2) } });
+      else if (k === 'belt') rows.push({ belt: { cells: pick([[0, 1, 2, 3, 4], [0, 1, 2, 3], [1, 2, 3, 4]]), dir: pick([-1, 1]) } });
+      else rows.push(pick([{ cells: [0, 4], ice: [1, 2, 3] }, { ice: [0, 1, 2, 3, 4] }, { cells: [0], ice: [1, 2, 3, 4] }]));
+      last = k;
+    }
+    rows.push({ cells: [0, 1, 2, 3, 4], checkpoint: true });
+    const chance = Math.min(.9, .15 + .14 * tier), drones = [];   // en los niveles altos hay menos pisos firmes, por eso la probabilidad sube más
+    for (let i = 1; i <= 5 && drones.length < 3; i++) {
+      const row = rows[i];
+      if (!row.cells || row.blink || row.crumble || row.moving || row.ice || row.belt || r() >= chance) continue;
+      drones.push({ row: i, speed: +(.9 + .09 * tier + r() * .3).toFixed(2), phase: +(r() * 6).toFixed(2), span: +(1 + r() * 1.6).toFixed(2), center: 2 });
+    }
+    return { rows, drones, bridges: false };
+  },
+  /* Solo se acepta un tramo que pase la auditoría; la misma semilla y nivel dan siempre el mismo tramo */
+  endlessSegment(seed, tier) {
+    for (let k = 0; k < 300; k++) { const seg = Reglas.endlessDraft(seed + k * 7919, tier); if (!Reglas.audit(seg).length) return seg; }
+    return { rows: [0, 1, 2, 3, 4, 5, 6].map(i => ({ cells: [0, 1, 2, 3, 4], checkpoint: i === 6 })), drones: [], bridges: false };
+  },
+  /* Semillas de tramos por nivel de dificultad (de 0 a 5). Igual que las torres finales: solo entran las que el jugador
+     automático de prueba terminó con los peligros activos, empezando en 60 momentos distintos del reloj (de 0 a 44 s,
+     porque drones, placas, viento y plataformas se combinan con periodos largos) y sin tener que retroceder más de 40
+     veces en ninguno. De 60 candidatas por nivel quedaron 59, 49, 36, 47, 44, 39. Si cambia `endlessDraft`, hay que repetirlo con
+     `towerQA.verifySegments(nivel, semillas)` (?qa): tarda unos 4 minutos por nivel. */
+  ENDLESS_SEEDS: [
+  [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+    31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+    46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 57, 58, 59, 60
+  ],
+  [
+    1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1014, 1015, 1017,
+    1018, 1019, 1020, 1023, 1024, 1025, 1026, 1027, 1028, 1029, 1030, 1032, 1033, 1035, 1036,
+    1038, 1039, 1040, 1041, 1042, 1044, 1045, 1046, 1047, 1049, 1050, 1051, 1052, 1053, 1054,
+    1055, 1056, 1057, 1058
+  ],
+  [
+    2001, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2018, 2019, 2020, 2023, 2028, 2034, 2035, 2036, 2037, 2043, 2045, 2046, 2051, 2052, 2053,
+    2054, 2055, 2057, 2058, 2059, 2060
+  ],
+  [
+    3001, 3003, 3005, 3006, 3007, 3008, 3009, 3010, 3011, 3012, 3013, 3015, 3016, 3017, 3018,
+    3020, 3021, 3022, 3024, 3025, 3026, 3027, 3028, 3030, 3032, 3033, 3035, 3036, 3037, 3039,
+    3040, 3041, 3042, 3044, 3045, 3046, 3047, 3048, 3049, 3050, 3051, 3052, 3055, 3056, 3057,
+    3058, 3059
+  ],
+  [
+    4001, 4003, 4004, 4005, 4006, 4007, 4008, 4010, 4011, 4013, 4014, 4016, 4017, 4018, 4019,
+    4020, 4021, 4024, 4025, 4026, 4028, 4029, 4030, 4031, 4032, 4033, 4035, 4037, 4038, 4041,
+    4042, 4044, 4045, 4046, 4048, 4049, 4050, 4051, 4053, 4055, 4056, 4057, 4059, 4060
+  ],
+  [
+    5002, 5003, 5004, 5005, 5006, 5008, 5009, 5011, 5015, 5016, 5017, 5018, 5019, 5021, 5023,
+    5025, 5027, 5028, 5029, 5030, 5032, 5033, 5034, 5036, 5037, 5038, 5039, 5040, 5044, 5046,
+    5048, 5050, 5051, 5052, 5053, 5057, 5058, 5059, 5060
+  ]
+  ],
+  /* El tramo i de una partida: pisos absolutos (el piso 0 es el de salida) y su semilla elegida con la de la partida */
+  endlessSegmentAt(runSeed, i) {
+    const tier = Reglas.endlessTier(i), seeds = Reglas.ENDLESS_SEEDS[tier];
+    const seed = seeds[Math.floor(Reglas.rng((runSeed ^ Math.imul(i + 1, 0x9E3779B1)) >>> 0)() * seeds.length)];
+    const seg = Reglas.endlessSegment(seed, tier), base = i * 6;
+    return { tier, seed, base, rows: seg.rows.slice(1), drones: seg.drones.map(d => Object.assign({}, d, { row: d.row + base })) };
+  },
+
   /* Para cada estado alcanzable: a cuántos movimientos está la meta y cuál conviene hacer */
   solve(level) {
     const G = Reglas.graph(level), seen = new Map([[G.key(G.start), G.start]]), back = new Map(), queue = [G.start], goals = [];

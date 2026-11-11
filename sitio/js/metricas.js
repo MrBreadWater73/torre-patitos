@@ -39,6 +39,24 @@ const Metricas = {
     };
   },
 
+  isEndless: run => run.mode === 'endless',
+  /* Modo infinito: pisos que alcanzó cada intento. El tablero guarda el mejor intento de cada nombre. */
+  endless(runs) {
+    const { median } = Metricas, rs = runs.filter(Metricas.isEndless), floors = rs.map(r => +r.floors || 0);
+    const bestBy = new Map();
+    for (const r of rs) {
+      if (!r.nick) continue;
+      const k = String(r.nick).toLowerCase(), cur = bestBy.get(k), f = +r.floors || 0;
+      if (!cur || f > cur.floors || (f === cur.floors && (r.totalTime || 0) < cur.totalTime)) bestBy.set(k, { nick: r.nick, floors: f, totalTime: +r.totalTime || 0, assist: !!r.assist, id: r.id });
+    }
+    const bins = [0, 0, 0, 0, 0, 0]; floors.forEach(f => { bins[Math.min(5, Math.floor(f / 12))]++; });
+    return {
+      runs: rs.length, players: bestBy.size, best: floors.length ? Math.max(...floors) : 0, medFloors: median(floors), medTime: median(rs.map(r => +r.totalTime || 0)),
+      assisted: rs.filter(r => r.assist).length, bins,
+      board: [...bestBy.values()].sort((a, b) => b.floors - a.floors || a.totalTime - b.totalTime).slice(0, 10)
+    };
+  },
+
   /* Antes / después: una fila por métrica, con la observación de la versión 1 que busca responder.
      `kind` dice cómo mostrarla: time (segundos), pct, num. `want` es hacia dónde se buscaba moverla. */
   compare(a, b) {

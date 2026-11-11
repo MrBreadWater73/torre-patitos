@@ -65,3 +65,40 @@ test('with no surveys or no runs the survey rows are empty instead of zero', () 
   assert.equal(rows.find(r => r.key === 'fun').v2, null);
   assert.equal(rows.find(r => r.key === 'passCh1').v2, 0);
 });
+
+const climb = (id, floors, o = {}) => Object.assign({ id, mode: 'endless', levels: [], completed: 0, totalTime: 60, floors }, o);
+
+test('the endless board ignores story runs and counts only the climbs', () => {
+  const e = Metricas.endless([run('a', { completed: 7, totalTime: 900 }), climb('b', 30), climb('c', 12)]);
+  assert.equal(e.runs, 2);
+  assert.equal(e.best, 30);
+  assert.equal(e.medFloors, 21);
+});
+
+test('the board keeps the best climb of each name, ordered by floors and then by time', () => {
+  const e = Metricas.endless([
+    climb('a', 40, { nick: 'Pipo', totalTime: 200 }), climb('b', 55, { nick: 'pipo', totalTime: 300 }),
+    climb('c', 55, { nick: 'Tina', totalTime: 250 }), climb('d', 70), climb('e', 12, { nick: 'Lalo', totalTime: 50 })
+  ]);
+  assert.deepEqual(e.board.map(r => [r.nick, r.floors]), [['Tina', 55], ['pipo', 55], ['Lalo', 12]]);   // anonymous climbs do not sign; the tie is broken by time
+  assert.equal(e.players, 3);
+});
+
+test('floors reached are grouped in bins of twelve with an open last bin', () => {
+  const e = Metricas.endless([climb('a', 0), climb('b', 11), climb('c', 12), climb('d', 59), climb('e', 60), climb('f', 400)]);
+  assert.deepEqual(e.bins, [2, 1, 0, 0, 1, 2]);
+});
+
+test('an empty endless board has no best, no median and no bins filled', () => {
+  const e = Metricas.endless([run('a')]);
+  assert.equal(e.runs, 0);
+  assert.equal(e.best, 0);
+  assert.equal(e.medFloors, null);
+  assert.deepEqual(e.bins, [0, 0, 0, 0, 0, 0]);
+});
+
+test('story views leave endless climbs out', () => {
+  assert.equal(Metricas.isEndless(climb('a', 5)), true);
+  assert.equal(Metricas.isEndless(run('b')), false);
+  assert.equal(Metricas.compute([run('a', { levels: [lvl(1)] })].filter(r => !Metricas.isEndless(r)), 3).runs, 1);
+});
