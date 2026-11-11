@@ -208,7 +208,7 @@ const LEVELS = [
 ];
 { // la torre de muestra para el nivel generado
   const R = typeof Reglas !== 'undefined' ? Reglas : require('./reglas.js'), last = LEVELS[LEVELS.length - 1];
-  Object.assign(last, R.generate(7, 30)); Object.assign(last.down, last.downText);
+  Object.assign(last, R.generate(R.TOWER_SEEDS[0], 30)); Object.assign(last.down, last.downText);
 }
 
 if (typeof module !== 'undefined') module.exports = LEVELS;

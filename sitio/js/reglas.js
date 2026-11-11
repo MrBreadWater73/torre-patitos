@@ -188,7 +188,7 @@ const Reglas = {
       let k = pick(kinds); if (k === last && k !== 'plain') k = 'plain';
       if (k === 'plain') rows.push({ cells: some(3 + int(2)) });
       else if (k === 'glass') { const c = some(4), g = c.splice(int(c.length), 1 + int(2)); rows.push({ cells: c, crumble: g }); }
-      else if (k === 'blink') { const x0 = int(3); rows.push({ blink: [0, 1, 2].map(j => ({ x: x0 + j, o: +(j * (.3 + r() * .5)).toFixed(2) })), period: +(2.3 + r() * .8).toFixed(2), on: +(1.35 + r() * .3).toFixed(2) }); }
+      else if (k === 'blink') { const x0 = int(3); rows.push({ blink: [0, 1, 2].map(j => ({ x: x0 + j, o: 0 })), period: +(2.5 + r() * .8).toFixed(2), on: +(1.5 + r() * .3).toFixed(2) }); }   // las tres a la vez: con desfase puede no haber forma de cruzarlas
       else if (k === 'moving') rows.push({ moving: { c: 2, a: +(1.1 + r() * .4).toFixed(2), s: +(.9 + r() * .4).toFixed(2), p: +(r() * 6).toFixed(2) } });
       else if (k === 'wind') rows.push({ cells: [0, 1, 2, 3, 4], wind: { dir: pick([-1, 1]), period: +(2.7 + r() * .8).toFixed(2), on: 1.1, o: +(r() * 2).toFixed(2) } });
       else if (k === 'belt') rows.push({ belt: { cells: pick([[0, 1, 2, 3, 4], [0, 1, 2, 3], [1, 2, 3, 4]]), dir: pick([-1, 1]) } });
@@ -210,6 +210,12 @@ const Reglas = {
     const rows = Array.from({ length: floors + 1 }, (_, i) => i === floors - 1 ? { gate: [{ x: 1, g: 'pk' }, { x: 2, g: 'pk' }, { x: 3, g: 'pk' }] } : { cells: [0, 1, 2, 3, 4], checkpoint: i > 0 && i % 5 === 0 });
     return { rows, packages: [{ row: 3, x: 0 }, { row: 9, x: 4 }, { row: 14, x: 0 }], bridges: false, drones: [], down: { chase: { speed: .42, delay: 3 }, gone: [], drones: [] } };
   },
+  /* Semillas de las torres finales que se usan en el juego. La auditoría no mide el tiempo, así que una torre
+     puede pasarla y aun así pedir un salto imposible; por eso solo entran las que el jugador automático de prueba
+     terminó de subida y de bajada, con el apagón encima. Si cambia `draft`, hay que volver a correr
+     `towerQA.verifyTowers()` en el navegador (con ?qa) y actualizar esta lista. */
+  TOWER_SEEDS: [102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 132, 133, 135, 136, 137, 138, 139, 140, 141, 142, 143, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170],
+  towerSeed: n => Reglas.TOWER_SEEDS[(n >>> 0) % Reglas.TOWER_SEEDS.length],
   /* Para cada estado alcanzable: a cuántos movimientos está la meta y cuál conviene hacer */
   solve(level) {
     const G = Reglas.graph(level), seen = new Map([[G.key(G.start), G.start]]), back = new Map(), queue = [G.start], goals = [];

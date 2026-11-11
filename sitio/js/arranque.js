@@ -54,6 +54,12 @@ if (QA) window.towerQA = {
     render();
     return Object.assign(out, { finished: mode === 'celebrate', phase, floor: Math.round(player.row), time: +ls.time.toFixed(1), upTime: ls.upTime, deaths: ls.deaths.length });
   },
+  // Vuelve a jugar con el bot todas las torres finales de Reglas.TOWER_SEEDS; devuelve las que ya no termina
+  verifyTowers(seeds = Reglas.TOWER_SEEDS) {
+    const base = Object.assign({}, LEVELS[LEVELS.length - 1]), bad = [];
+    for (const seed of seeds) { this.custom(Object.assign({}, base, Reglas.generate(seed, 30), { generated: false, n: 1 })); const r = this.bot(); if (!r.finished) bad.push([seed, r.problems.join('; ')]); }
+    return { checked: seeds.length, bad };
+  },
   sim(dt) { for (let t = 0; t < dt - 1e-9; t += 1 / 120) simulate(Math.min(1 / 120, dt - t)); },
   noDrones() { drones.forEach(d => { d.destroyed = true; }); }, // para probar el recorrido sin esperar a los drones
   setClock(t) { clock = t; }, keyFrom: p => hitAt(p), project: topCenter

@@ -48,3 +48,12 @@ test('a generated tower never needs a stunned drone as a bridge', () => {
     assert.ok(!Reglas.plan(lvl, Reglas.graph(lvl).start).some(e => e.act.bridge), 'seed ' + seed);
   }
 });
+
+test('the final tower of a run is always one of the towers the test bot has completed', () => {
+  assert.ok(Reglas.TOWER_SEEDS.length >= 60);
+  assert.equal(new Set(Reglas.TOWER_SEEDS).size, Reglas.TOWER_SEEDS.length);
+  for (const n of [0, 1, 63, 64, 123456789, 4294967295]) assert.ok(Reglas.TOWER_SEEDS.includes(Reglas.towerSeed(n)), 'n ' + n);
+  assert.equal(Reglas.towerSeed(5), Reglas.towerSeed(5 + Reglas.TOWER_SEEDS.length));
+  assert.notEqual(Reglas.towerSeed(5), Reglas.towerSeed(6));
+  for (const seed of Reglas.TOWER_SEEDS) assert.deepEqual(Reglas.audit(Reglas.generate(seed, 30)), [], 'seed ' + seed);
+});

@@ -20,7 +20,7 @@ const chaseCfg = () => L.down && L.down.chase && { delay: L.down.chase.delay, sp
 const seedOf = id => { let h = 2166136261; for (const ch of String(id)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
 function loadLevel(i) {
   L = LEVELS[i];
-  if (L.generated && run.id) { Object.assign(L, Reglas.generate(seedOf(run.id), 30)); Object.assign(L.down, L.downText); }
+  if (L.generated && run.id) { Object.assign(L, Reglas.generate(Reglas.towerSeed(seedOf(run.id)), 30)); Object.assign(L.down, L.downText); }
   resetLevelState();
   ls = run.levels[i] || (run.levels[i] = { n: i + 1, time: 0, falls: 0, kills: 0, feather: false, done: false, restarts: 0, deaths: [] });
   if (assist) run.assist = true;
