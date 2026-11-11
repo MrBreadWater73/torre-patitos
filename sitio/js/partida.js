@@ -94,7 +94,7 @@ function settle(row, sup, floors, dir) {
   if (L.feather && row === L.feather.row && Math.abs(player.x - L.feather.x) < .5 && !featherGot) { featherGot = true; burst(player.x, row, '#d9b23a', 24, { shape: 'circle' }); tone('feather'); showToast('Pluma dorada. No sirve para nada, pero es tuya.', 'drop'); announce('Pluma dorada conseguida.'); }
   const pi = Reglas.packageAt(L.packages, row, sup.x);
   if (pi >= 0 && !gotPk.has(pi)) {
-    gotPk.add(pi); burst(player.x, row, '#d9a441', 18, { lift: 20 }); tone('feather');
+    gotPk.add(pi); burst(player.x, row, '#d9a441', 18, { lift: 20 }); tone('package');
     const left = L.packages.length - gotPk.size;
     if (!left) { levers.set('pk', true); shake = 4; showToast('Tienes los ' + L.packages.length + ' paquetes. La puerta de arriba se abrió.', 'drop'); announce('Tienes todos los paquetes. La puerta de arriba se abrió.'); }
     else { showToast('Paquete ' + gotPk.size + ' de ' + L.packages.length + '.', 'drop'); announce('Paquete ' + gotPk.size + ' de ' + L.packages.length + '.'); }
@@ -123,7 +123,7 @@ function rescue() {
   ls.upTime = +ls.time.toFixed(2); player.shield = 1.6; shake = 6;
   sibQuip = L.down.hello ? { text: L.down.hello, until: amb + 3 } : null; nextQuip = amb + 8;
   for (const [r, x] of L.down.gone || []) burst(x, r, '#8d897e', 12, { lift: 0 });
-  const c = topCenter(2, top); hearts(c.x, c.y - 30); tone('win');
+  const c = topCenter(2, top); hearts(c.x, c.y - 30); tone(L.down.chase ? 'alarm' : 'win');
   showToast(L.down.chase ? 'La central se apaga desde arriba. ¡Baja!' : L.sibling + ' va contigo. Ahora toca bajar.', L.down.chase ? 'death' : 'drop');
   announce('Rescataste a ' + L.sibling + '. Ahora baja con ' + L.sibling + ' hasta la planta baja.');
   updateSide(); updateLegend();
@@ -161,7 +161,7 @@ function beginHop(tx, tr, why) {   // why: 'slide' (hielo), 'belt' (banda) o 'wi
   }
   player.jump = { fromX: player.x, fromRow: player.row, toX: tx, toRow: tr, elapsed: 0, duration: why === 'slide' ? .2 : why ? .3 : JUMP, dir: side, why, flat: !!why };
   if (!why) { if (tx < player.x - .05) player.face = -1; else if (tx > player.x + .05) player.face = 1; }
-  player.sq = why ? 0 : -.2; if (!why) tone('hop'); return true;
+  player.sq = why ? 0 : -.2; tone(why === 'slide' ? 'slide' : why === 'wind' ? 'gust' : why ? 'click' : 'hop'); return true;
 }
 const DIRS = { up: [0, 1], down: [0, -1], left: [-1, 0], right: [1, 0] };
 function move(dir, fromBuffer) {
@@ -178,10 +178,10 @@ function attack() {
   const d = near[0], lv = d ? null : Reglas.leverInReach(L.levers, Math.round(player.row), player.x, Reglas.PUNCH_REACH);
   const dir = d ? Math.sign(droneX(d) - player.x) || 1 : lv ? Math.sign(lv.x - player.x) || 1 : player.face;
   punch = { age: 0, dir, far: !!(d || lv) }; tone('punch');
-  if (d) { d.fx = droneX(d); d.stun = 5; ls.kills++; shake = 5; burst(d.fx, d.row, '#ffce4c', 16, { lift: 40 }); tone('destroy'); announce('Dron aturdido. Aguanta unos segundos como plataforma.'); }
+  if (d) { d.fx = droneX(d); d.stun = 5; ls.kills++; shake = 5; burst(d.fx, d.row, '#ffce4c', 16, { lift: 40 }); tone('stun'); announce('Dron aturdido. Aguanta unos segundos como plataforma.'); }
   if (lv) {
     const on = Reglas.toggleLever(levers, lv.g); leverHit = { g: lv.g, t: amb }; shake = 3;
-    burst(lv.x, lv.row, '#6fb1cf', 14, { lift: 30 }); tone('checkpoint');
+    burst(lv.x, lv.row, '#6fb1cf', 14, { lift: 30 }); tone('lever');
     announce(on ? 'Palanca activada: el puente se encendió.' : 'Palanca desactivada: el puente se apagó.');
   }
   updateHud(true); return !!(d || lv);
