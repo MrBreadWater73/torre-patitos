@@ -187,7 +187,23 @@ const LEVELS = [
         { row: 14, speed: 1.1, phase: .4, span: .5, center: 2.9 }, { row: 11, speed: 1, phase: 2.2, span: 1.3, center: 2 }, { row: 9, speed: 1.1, phase: 1.3, span: 2.4, center: 2 }, { row: 6, speed: 1.2, phase: -.2, span: 1.2, center: 2 }, { row: 3, speed: 1, phase: 1.1, span: 1.6, center: 1.5 }, { row: 1, speed: .9, phase: 2, span: 1.1, center: 2 }]
     },
     quips: ['Ya no nos escuchan. Creo.', 'Ese foco parpadea en clave.', 'Corre, pero con calma.', 'La alarma dice tu nombre.', 'Yo apagué. Tú solo golpeaste.']
+  },
+  // Torre final: los pisos se generan en cada partida (ver Reglas.generate); aquí va una de muestra
+  { n: 7, name: 'Central de Entregas Ya!', theme: 'storm', sibling: 'toda la familia', sib: 'mom', family: ['mom', 'phone', 'shades', 'foil', 'egg'], tutorial: 2, bubble: 'Ya estamos todos.', generated: true,
+    objective: 'La familia subió por el nido a la azotea de la central y el montacargas se apagó. Sube por ellos. La puerta pide 3 paquetes.',
+    tip: 'Esta torre se arma distinta en cada partida, con todo lo que ya conoces. Al tocar a la familia, la central empieza a apagarse desde arriba: baja sin detenerte.',
+    zones: [[5, 'Vestíbulo'], [10, 'Atención a clientes'], [15, 'Recursos humanos'], [20, 'Gerencia'], [25, 'Dirección'], [99, 'Azotea']],
+    downText: {
+      objective: 'La central se apaga desde arriba. Baja con toda la familia en fila. No te detengas.',
+      tip: 'Lo que queda arriba de la línea roja ya no existe. Las banderas te devuelven con ventaja. Todos pisan donde tú pisas.',
+      hello: 'Tú adelante. Nosotros te seguimos.', tint: '70,12,16'
+    },
+    quips: ['Así no se brinca.', 'Esto sí lo subo.', '¿Falta mucho?', 'Nos están escuchando.', '(crac)', 'Fila india. Sin empujar.']
   }
 ];
+{ // la torre de muestra para el nivel generado
+  const R = typeof Reglas !== 'undefined' ? Reglas : require('./reglas.js'), last = LEVELS[LEVELS.length - 1];
+  Object.assign(last, R.generate(7, 30)); Object.assign(last.down, last.downText);
+}
 
 if (typeof module !== 'undefined') module.exports = LEVELS;

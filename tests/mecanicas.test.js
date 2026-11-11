@@ -78,3 +78,10 @@ test('audit: a drone crossing a gap is a bridge, and a belt counts as floor', ()
   assert.deepEqual(Reglas.audit(lvl), []);
   assert.match(Reglas.audit(Object.assign({}, lvl, { drones: [] })).join('\n'), /no se puede llegar arriba/);
 });
+
+test('audit: a drone can only be used as a bridge from its own floor, never from below', () => {
+  // The only way up is the gap at floor 1 column 2; the drone flies over it but cannot be punched from floor 0.
+  const rows = [{ cells: [2] }, {}, { cells: [2] }];
+  const lvl = base({ rows, drones: [{ row: 1, center: 2, span: 1 }] });
+  assert.match(Reglas.audit(lvl).join('\n'), /no se puede llegar arriba/);
+});

@@ -281,6 +281,7 @@ function drawGoal(x, row) {
   ell(c.x, c.y + 2, 30, 9, 'rgba(20,20,20,.22)');
   drawSibling(L.sib, c.x + 4, c.y - 2 - hop, .9, -1, { blink: amb < sibBlink.until, flap: jumping ? Math.sin(amb * 30) * .6 : Math.sin(amb * 3) * .15 });
   if (mode !== 'celebrate') drawBubble(c.x + 4, c.y - 64 - hop, L.bubble);
+  (L.family || []).slice(1).forEach((k, i) => { const q = topCenter(i < 2 ? 1 : 3, row); drawSibling(k, q.x + (i % 2 ? 12 : -12), q.y - 2 - (jumping ? hop * .7 : 0), .78, i < 2 ? 1 : -1, { blink: amb < sibBlink.until }); });
 }
 
 /* Cada grupo de puentes tiene su color; la palanca que lo enciende usa el mismo */
@@ -338,15 +339,27 @@ function drawWind(row, w) {
   }
   g.restore();
 }
-/* El hermano rescatado sigue a Pipo, un aterrizaje atrás */
-function drawFollower() {
-  const f = follower, u = clamp(f.t, 0, 1), e = smooth(u), jumping = mode === 'celebrate';
-  const tx = L.rows[f.row].moving ? movingX(f.row) : f.x, x = lerp(f.fromX, tx, e), row = lerp(f.fromRow, f.row, e);
-  const lift = u < 1 ? Math.sin(Math.PI * u) * 34 : 0, c = topCenter(x, row, lift);
-  const hop = jumping && !reduced ? Math.abs(Math.sin(amb * 9)) * 16 : 0;
-  ell(c.x - 13, c.y + 2 + lift, 16, 5, 'rgba(20,20,20,.2)');
-  drawSibling(L.sib, c.x - 13, c.y - 3 - hop, .86, Math.sign(player.x - x) || 1, { blink: amb < sibBlink.until, flap: u < 1 || jumping ? Math.sin(amb * 30) * .5 : 0 });
-  if (sibQuip && amb < sibQuip.until && !jumping) drawBubble(c.x - 13, c.y - 58, sibQuip.text);
+/* Quien fue rescatado sigue a Pipo un aterrizaje atrás; en el final, toda la familia en fila */
+function drawFollowers() {
+  const jumping = mode === 'celebrate';
+  for (let i = followers.length - 1; i >= 0; i--) {
+    const f = followers[i], u = clamp(f.t, 0, 1), e = smooth(u);
+    const tx = L.rows[f.row].moving ? movingX(f.row) : f.x, x = lerp(f.fromX, tx, e), row = lerp(f.fromRow, f.row, e);
+    const lift = u > 0 && u < 1 ? Math.sin(Math.PI * u) * 34 : 0, c = topCenter(x, row, lift), ox = -13 - (i % 3) * 5;
+    const hop = jumping && !reduced ? Math.abs(Math.sin(amb * 9 + i)) * 16 : 0;
+    if (Reglas.chaseDead(chaseY, row) && chaseOn()) continue;
+    ell(c.x + ox, c.y + 2 + lift, 16, 5, 'rgba(20,20,20,.2)');
+    drawSibling(f.kind, c.x + ox, c.y - 3 - hop, .86, Math.sign(player.x - x) || 1, { blink: amb < sibBlink.until, flap: lift || jumping ? Math.sin(amb * 30 + i) * .5 : 0 });
+    if (!i && sibQuip && amb < sibQuip.until && !jumping) drawBubble(c.x + ox, c.y - 58, sibQuip.text);
+  }
+}
+/* Final: lo que queda arriba de la línea roja ya se apagó */
+function drawChase() {
+  const y = project(2, chaseY + .5).y - 20; if (y < -40) return;
+  g.fillStyle = 'rgba(6,8,14,.86)'; g.fillRect(0, -40, W, y + 40);
+  const grad = g.createLinearGradient(0, y, 0, y + 46); grad.addColorStop(0, 'rgba(255,70,60,.5)'); grad.addColorStop(1, 'rgba(255,70,60,0)');
+  g.fillStyle = grad; g.fillRect(0, y, W, 46);
+  g.fillStyle = reduced || Math.sin(amb * 12) > -.2 ? '#ff5a4e' : '#a8302a'; g.fillRect(0, y - 2, W, 4);
 }
 function drawExit() {
   const c = topCenter(2, 0), bob = reduced ? 0 : Math.sin(amb * 3) * 4;
@@ -398,9 +411,10 @@ function render() {
   }
   if (phase === 'down') drawExit();
   if (dusk > .01) { g.fillStyle = 'rgba(' + ((L.down && L.down.tint) || '14,18,44') + ',' + (.36 * dusk).toFixed(3) + ')'; g.fillRect(0, 0, W, H); } // cae la noche en la bajada
-  if (follower) drawFollower();
+  if (followers.length) drawFollowers();
   if (L.n === 1 && phase === 'up' && player.row <= 1 && mode !== 'celebrate') { const a = topCenter(2, 0), b = topCenter(2, 1); g.beginPath(); g.moveTo(a.x, a.y - 3); g.quadraticCurveTo(a.x + 30, a.y - 55, b.x, b.y + 6); g.strokeStyle = 'rgba(240,138,60,.7)'; g.lineWidth = 2; g.setLineDash([4, 6]); g.stroke(); g.setLineDash([]); drawArrow(b.x, b.y + 6, -Math.PI / 2, 'rgba(240,138,60,.85)', 5); }
   drawPlayer();
+  if (chaseOn()) drawChase();
   drawRain();
   drawParticles();
   if (flash > 0) { g.fillStyle = 'rgba(235,240,255,' + flash + ')'; g.fillRect(0, 0, W, H); }

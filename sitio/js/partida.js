@@ -12,11 +12,15 @@ function resetLevelState() {
   player = { row: 0, x: 2, jump: null, fall: null, drop: null, shield: 0, sq: 0, face: 1 };
   checkpoint = { row: 0, x: 2 }; drones = L.drones.map(d => Object.assign({}, d, { destroyed: false, stun: 0 }));
   pots = (L.pots || []).map(p => ({ row: p.row, x: p.x, sunk: false, fromX: p.x, t: 1 })); plugs = new Set(); beltT = 0; windT = 0;
-  phase = 'up'; gotPk = new Set(); levers = new Map(); trail = null; follower = null; dusk = 0; sibQuip = null; leverHit = null;
+  phase = 'up'; gotPk = new Set(); levers = new Map(); trail = null; followers = []; chaseT = 0; chaseY = 99; dusk = 0; sibQuip = null; leverHit = null;
   crumbles.clear(); flags.clear(); featherGot = false; cooldown = 0; punch = null; pending = null; celebrate = null; particles = []; hover = null; lastHud = '';
 }
+// La torre final se arma con una semilla que sale de la partida: cada partida tiene la suya
+const seedOf = id => { let h = 2166136261; for (const ch of String(id)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
 function loadLevel(i) {
-  L = LEVELS[i]; resetLevelState();
+  L = LEVELS[i];
+  if (L.generated && run.id) { Object.assign(L, Reglas.generate(seedOf(run.id), 30)); Object.assign(L.down, L.downText); }
+  resetLevelState();
   ls = run.levels[i] || (run.levels[i] = { n: i + 1, time: 0, falls: 0, kills: 0, feather: false, done: false, restarts: 0, deaths: [] });
   canvas.setAttribute('aria-label', 'Capítulo ' + L.n + ': ' + L.name + '. Usa las flechas o WASD para saltar, o toca una plataforma cercana.');
   updateSide(); updateLegend(); updateHud(true);
@@ -108,20 +112,24 @@ function settle(row, sup, floors, dir) {
 function rescue() {
   const top = nRows() - 1;
   phase = 'down'; checkpoint = { row: top, x: 2 }; flags.clear(); pending = null;
-  trail = Reglas.newTrail(top, 2); follower = { fromRow: top, fromX: 2, row: top, x: 2, t: 1 };
+  const kinds = L.family || [L.sib];   // en el final, toda la familia en fila
+  trail = Reglas.newTrail(top, 2, kinds.length); followers = kinds.map(kind => ({ kind, fromRow: top, fromX: 2, row: top, x: 2, t: 1 }));
+  chaseT = 0; chaseY = Reglas.chaseLine(top, 0, L.down.chase || { delay: 0, speed: 0 });
   drones = (L.down.drones || L.drones).map(d => Object.assign({}, d, { destroyed: false, stun: 0 }));
   ls.upTime = +ls.time.toFixed(2); player.shield = 1.6; shake = 6;
   sibQuip = L.down.hello ? { text: L.down.hello, until: amb + 3 } : null; nextQuip = amb + 8;
   for (const [r, x] of L.down.gone || []) burst(x, r, '#8d897e', 12, { lift: 0 });
   const c = topCenter(2, top); hearts(c.x, c.y - 30); tone('win');
-  showToast(L.sibling + ' va contigo. Ahora toca bajar.', 'drop');
+  showToast(L.down.chase ? 'La central se apaga desde arriba. ¡Baja!' : L.sibling + ' va contigo. Ahora toca bajar.', L.down.chase ? 'death' : 'drop');
   announce('Rescataste a ' + L.sibling + '. Ahora baja con ' + L.sibling + ' hasta la planta baja.');
   updateSide(); updateLegend();
 }
 function moveFollower(row, x) {
-  const before = Reglas.followerSpot(trail); Reglas.pushTrail(trail, row, x);
-  const now = Reglas.followerSpot(trail);
-  if (now.row !== before.row || Math.abs(now.x - before.x) > .05) follower = { fromRow: before.row, fromX: before.x, row: now.row, x: now.x, t: 0 };
+  Reglas.pushTrail(trail, row, x);
+  followers.forEach((f, i) => {
+    const now = Reglas.followerSpot(trail, i);
+    if (now.row !== f.row || Math.abs(now.x - f.x) > .05) Object.assign(f, { fromRow: f.row, fromX: f.x, row: now.row, x: now.x, t: -i * .12 });   // cada uno sale un instante después
+  });
 }
 function pushPlayer(row, dir, why) {
   const nx = Math.round(player.x) + dir;
@@ -194,7 +202,7 @@ function simulate(dt) {
   if (amb > sibBlink.next) { sibBlink.until = amb + .13; sibBlink.next = amb + 2.5 + Math.random() * 3; }
   player.sq *= Math.exp(-dt * 9);
   dusk += ((phase === 'down' ? 1 : 0) - dusk) * (1 - Math.exp(-dt * 1.2));
-  if (follower && follower.t < 1) follower.t = Math.min(1, follower.t + dt / .34);
+  for (const f of followers) if (f.t < 1) f.t = Math.min(1, f.t + dt / .34);
   // Cámara
   const target = clamp(player.row * RISE - 300, 0, maxCam());
   if (flyover) {
@@ -206,6 +214,7 @@ function simulate(dt) {
   if (mode === 'celebrate') { celebrate.t += dt; if (celebrate.t > 2) { celebrate = null; showSummary(); } return; }
   if (mode !== 'playing') return;
   clock += dt; ls.time += dt;
+  if (chaseOn()) { chaseT += dt; chaseY = Reglas.chaseLine(nRows() - 1, chaseT, L.down.chase); if (!player.fall && Reglas.chaseDead(chaseY, player.row)) fail('apagon'); }
   if (phase === 'down' && L.quips && amb > nextQuip) { sibQuip = { text: L.quips[Math.floor(Math.random() * L.quips.length)], until: amb + 2.6 }; nextQuip = amb + 9 + Math.random() * 5; }
   cooldown = Math.max(0, cooldown - dt); player.shield = Math.max(0, player.shield - dt);
   if (punch) { punch.age += dt; if (punch.age > .25) punch = null; }
@@ -220,7 +229,9 @@ function simulate(dt) {
   if (player.fall) {
     player.fall.elapsed += dt;
     if (player.fall.elapsed >= player.fall.duration) { player = { row: checkpoint.row, x: checkpoint.x, jump: null, fall: null, drop: null, shield: 1.1, sq: .25, face: 1 }; pending = null; burst(player.x, player.row, '#b9b4a8', 10);
-      if (trail) { trail = Reglas.newTrail(checkpoint.row, checkpoint.x); follower = { fromRow: checkpoint.row, fromX: checkpoint.x, row: checkpoint.row, x: checkpoint.x, t: 1 }; } }
+      if (trail) { trail = Reglas.newTrail(checkpoint.row, checkpoint.x, followers.length); followers.forEach(f => Object.assign(f, { fromRow: checkpoint.row, fromX: checkpoint.x, row: checkpoint.row, x: checkpoint.x, t: 1 })); }
+      // El apagón retrocede para dar ventaja: queda 4 pisos arriba de la bandera
+      if (chaseOn()) { const c = L.down.chase; chaseT = Math.max(0, c.delay + (nRows() + 1 - (checkpoint.row + 4)) / c.speed); chaseY = Reglas.chaseLine(nRows() - 1, chaseT, c); } }
     updateHud(); return;
   }
   if (player.jump) {

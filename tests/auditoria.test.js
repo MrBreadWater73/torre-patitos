@@ -73,3 +73,35 @@ for (const lvl of LEVELS) {
     assert.deepEqual(Reglas.audit(lvl), []);
   });
 }
+
+test('plan: the route from the ground lists the hops and punches in order', () => {
+  const gate = { gate: [{ x: 1, g: 'a' }, { x: 2, g: 'a' }, { x: 3, g: 'a' }] };
+  const lvl = base({ rows: [full, gate, { cells: [2] }], levers: [{ row: 0, x: -0.2, g: 'a' }] });
+  const G = Reglas.graph(lvl), steps = Reglas.plan(lvl, G.start);
+  assert.deepEqual(steps.map(e => e.act.t), ['left', 'punch', 'up', 'right', 'up']);
+  const last = steps[steps.length - 1].s;
+  assert.deepEqual([last.row, last.x], [2, 2]);
+});
+
+test('plan: from a place with no way to the goal there is no route', () => {
+  const lvl = base({ rows: [full, { cells: [0] }, {}, { cells: [1, 2, 3] }] });
+  assert.equal(Reglas.plan(lvl, Reglas.graph(lvl).start), null);
+});
+
+test('plan: crossing a gap on a stunned drone is marked as a bridge', () => {
+  const rows = [{ cells: [0, 1, 2] }, { cells: [0, 1, 3] }, { cells: [3] }, { cells: [2, 3] }];
+  const lvl = base({ rows, drones: [{ row: 1, center: 2, span: 1.5 }] });
+  const steps = Reglas.plan(lvl, Reglas.graph(lvl).start);
+  assert.ok(steps.some(e => e.act.bridge));
+});
+
+test('solve: every state knows its distance to the goal and its next move', () => {
+  const gate = { gate: [{ x: 1, g: 'a' }, { x: 2, g: 'a' }, { x: 3, g: 'a' }] };
+  const lvl = base({ rows: [full, gate, { cells: [2] }], levers: [{ row: 0, x: -0.2, g: 'a' }] });
+  const G = Reglas.graph(lvl), policy = Reglas.solve(lvl), first = policy.get(G.key(G.start));
+  assert.equal(first.dist, Reglas.plan(lvl, G.start).length);
+  assert.equal(first.edge.act.t, 'left');
+  let s = G.start, hops = 0;
+  while (!G.done(s)) { s = policy.get(G.key(s)).edge.s; hops++; }
+  assert.equal(hops, first.dist);
+});
