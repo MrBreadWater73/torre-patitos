@@ -21,6 +21,7 @@ let particles = [], hover = null, hitAreas = [], cooldown = 0, punch = null, pen
 let blinkEye = { next: 2.5, until: 0 }, sibBlink = { next: 3.2, until: 0 };
 let sound = store.get('torrePatitos.sound', false), audio = null, combat = true;
 let phase = 'up', levers = new Map(), trail = null, follower = null, dusk = 0, sibQuip = null, nextQuip = 0, leverHit = null, gotPk = new Set(); // ida y vuelta, palancas, paquetes
+let pots = [], plugs = new Set(), beltT = 0, windT = 0; // macetas, bandas, viento
 let run = null, ls = null, lastHud = '', lastStamp = 0, vignette = null, storyIndex = 0;
 
 /* ============================================================

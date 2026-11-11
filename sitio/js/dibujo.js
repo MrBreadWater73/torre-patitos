@@ -87,6 +87,22 @@ function drawDuck(x, y, s = 1, face = 1, o = {}) {
   g.restore();
 }
 const MOM = { acc: 'mom', body: '#e9e2d0', shade: '#cfc6b0', belly: '#f4efe2' };
+/* Quien espera arriba y luego sigue a Pipo: un hermano, Mamá Pata o Huevo */
+function drawSibling(kind, x, y, s, face, o = {}) {
+  if (kind === 'egg') return drawEgg(x, y, s, o);
+  if (kind === 'mom') return drawDuck(x, y, s * 1.12, face, Object.assign({}, MOM, o));
+  drawDuck(x, y, s, face, Object.assign({ acc: kind }, o));
+}
+function drawEgg(x, y, s = 1, o = {}) {
+  const ink = '#1f211d', wob = reduced ? 0 : (o.flap || 0) * .35 + Math.sin(amb * 2.1) * .04;
+  g.save(); g.translate(x, y); ell(0, 2, 13 * s, 4 * s, 'rgba(10,10,10,.25)'); g.scale(s, s); g.rotate(wob);
+  g.beginPath(); g.ellipse(0, -17, 13, 17, 0, 0, Math.PI * 2); g.fillStyle = '#efe6d0'; g.fill(); g.strokeStyle = ink; g.lineWidth = 1.7; g.stroke();
+  ell(-4, -23, 4, 6, 'rgba(255,255,255,.55)', -.4);
+  for (const [a, b] of [[5, -12], [-6, -9], [2, -26], [7, -21]]) ell(a, b, 1.6, 1.3, '#c9b48a');
+  line([P(-3, -31), P(0, -27), P(-2, -24), P(2, -21)], ink, 1.1);
+  rrect(-13, -9, 26, 6, 2, '#3f8c93', ink, 1.1);     // la bufanda que le puso Mamá Pata
+  g.restore();
+}
 
 /* ============================================================
    Escenario
@@ -184,6 +200,9 @@ function drawPlatform(x, row, kind, o = {}) {
   if (kind === 'crumble') { top = 'rgba(196,214,208,.92)'; s1 = 'rgba(132,156,152,.92)'; s2 = 'rgba(108,132,128,.92)'; }
   if (kind === 'blink') { top = o.warn && Math.sin(amb * 38) > 0 ? '#fff1c0' : '#e3c24a'; s1 = '#9c7c25'; s2 = '#7f641d'; }
   if (kind === 'gate') { [top, s1, s2] = groupColors(o.group); }
+  if (kind === 'ice') { top = '#d3edf4'; s1 = '#8fbfd0'; s2 = '#73a5b8'; }
+  if (kind === 'belt') { top = '#3f4248'; s1 = '#2a2c30'; s2 = '#1f2124'; }
+  if (kind === 'plug') { top = '#6a5238'; s1 = '#a5674a'; s2 = '#8a543b'; }
   if (o.feather && kind === 'fixed') top = '#cdb76a';
   if (kind === 'blink' && !reduced) { g.save(); g.globalAlpha = (o.alpha ?? 1) * (o.warn ? .22 : .35); ell((a.x + c.x) / 2, (a.y + c.y) / 2, 52, 22, '#ffd36a'); g.restore(); }
   poly([b, c, P(c.x, c.y + h), P(b.x, b.y + h)], s2);
@@ -198,6 +217,13 @@ function drawPlatform(x, row, kind, o = {}) {
     if (k > 0) { line([P(cc.x + 2, cc.y + 5), P(cc.x + 8, cc.y + 12)], 'rgba(40,58,56,.85)', 1.4); line([P(cc.x - 18, cc.y + 2), P(cc.x - 26, cc.y - 5)], 'rgba(40,58,56,.85)', 1.4); }
     line([P(a.x + 8, a.y - 2), P(d.x + 8, d.y + 2)], 'rgba(255,255,255,.45)', 2);
   }
+  if (kind === 'ice') { line([P(a.x + 14, a.y - 3), P(a.x + 34, a.y - 9)], 'rgba(255,255,255,.9)', 2); line([P(a.x + 44, a.y - 4), P(a.x + 56, a.y - 8)], 'rgba(255,255,255,.7)', 1.5); }
+  if (kind === 'belt') {
+    const cc = P((a.x + c.x) / 2, (a.y + c.y) / 2), dir = o.dir || 1, ph = reduced ? 0 : (amb * 1.8 * dir) % 1;
+    for (let i = -1; i <= 1; i++) { const k = (i + ph) * 24; if (Math.abs(k) < 30) drawArrow(cc.x + k, cc.y - k * .15, dir > 0 ? -.15 : Math.PI - .15, 'rgba(226,189,72,.9)', 5); }
+    line([a, b], 'rgba(226,189,72,.55)', 1.5);
+  }
+  if (kind === 'plug') { const cc = P((a.x + c.x) / 2, (a.y + c.y) / 2); ell(cc.x, cc.y, 24, 8, '#4a3826'); line([P(cc.x, cc.y - 1), P(cc.x - 5, cc.y - 12)], '#55613a', 2); ell(cc.x - 7, cc.y - 13, 5, 2.6, '#6b7a44', -.5); ell(cc.x + 3, cc.y - 9, 5, 2.6, '#7d8c50', .5); }
   if (kind === 'blink') { const cc = P((a.x + c.x) / 2, (a.y + c.y) / 2); poly([P(cc.x + 2, cc.y - 9), P(cc.x - 6, cc.y + 1), P(cc.x - 1, cc.y + 1), P(cc.x - 3, cc.y + 8), P(cc.x + 6, cc.y - 2), P(cc.x + 1, cc.y - 2)], '#8a5a12'); }
   g.restore(); return geo;
 }
@@ -217,6 +243,11 @@ function drawFeather(x, row) {
 }
 function drawDrone(d) {
   if (d.destroyed) return;
+  if (d.stun > 0) {   // aturdido: baja a la altura del piso y sirve de plataforma
+    const q = topCenter(d.fx, d.row), blink = d.stun < 1.4 && !reduced && Math.sin(amb * 22) > 0;
+    ell(q.x, q.y + 6, 26, 7, 'rgba(20,20,20,.25)');
+    g.save(); g.translate(q.x, q.y + 2); g.globalAlpha = blink ? .45 : 1; drawDroneBody(1, true); g.restore(); return;
+  }
   const x = droneX(d), p = topCenter(x, d.row), y = p.y - 34 + (reduced ? 0 : Math.sin(amb * 5 + d.phase) * 2.5);
   line([P(140, project(0, d.row).y - 32), P(648, project(4, d.row).y - 26)], 'rgba(184,153,117,.3)', 2, [2, 6]);
   ell(p.x, p.y + 1, 22, 6, 'rgba(60,40,30,.15)');
@@ -226,14 +257,14 @@ function drawDrone(d) {
   drawArrow(dir * 41, 0, dir > 0 ? 0 : Math.PI, 'rgba(240,138,60,.85)', 4);
   g.restore();
 }
-function drawDroneBody(dir = 1) {
+function drawDroneBody(dir = 1, off = false) {
   line([P(-25, -4), P(25, -4)], '#3a3c40', 4);
   line([P(0, 8), P(0, 13)], '#2a2b2e', 1.2);
   rrect(-8, 12, 16, 12, 2, '#a98457', '#4f3a24', 1); line([P(-8, 17), P(8, 17)], 'rgba(226,189,72,.9)', 2);
   rrect(-16, -11, 32, 20, 5, '#d7d3c8', '#26272a', 1.3);
   g.fillStyle = '#e0782c'; g.fillRect(-15, -1, 30, 4);
-  rrect(-11, -8, 16, 7, 3, '#26272a'); ell(-3 + dir * 4, -4.5, 2.6, 2.6, Math.sin(amb * 8) > -.6 ? '#ff4b3e' : '#7a2a24');
-  for (const a of [-25, 25]) { rrect(a - 4, -15, 8, 14, 2, '#55575c'); const spin = reduced ? 1 : Math.abs(Math.sin(amb * 40 + a)); ell(a, -15, 17 * spin + 3, 3.2, 'rgba(60,60,64,.55)'); }
+  rrect(-11, -8, 16, 7, 3, '#26272a'); ell(-3 + dir * 4, -4.5, 2.6, 2.6, off ? '#3a3c40' : Math.sin(amb * 8) > -.6 ? '#ff4b3e' : '#7a2a24');
+  for (const a of [-25, 25]) { rrect(a - 4, -15, 8, 14, 2, '#55575c'); const spin = off ? 1 : reduced ? 1 : Math.abs(Math.sin(amb * 40 + a)); ell(a, -15, 17 * spin + 3, 3.2, 'rgba(60,60,64,.55)'); }
 }
 function drawMovingRail(row) {
   const m = L.rows[row].moving, a = project(m.c - m.a - .25, row), b = project(m.c + m.a + .25, row);
@@ -248,7 +279,7 @@ function drawGoal(x, row) {
   const c = topCenter(x, row); const jumping = mode === 'celebrate';
   const hop = jumping ? Math.abs(Math.sin(amb * 9)) * 18 : (reduced ? 0 : Math.abs(Math.sin(amb * 2.2)) * 3);
   ell(c.x, c.y + 2, 30, 9, 'rgba(20,20,20,.22)');
-  drawDuck(c.x + 4, c.y - 2 - hop, .9, -1, { acc: L.sib, blink: amb < sibBlink.until, flap: jumping ? Math.sin(amb * 30) * .6 : Math.sin(amb * 3) * .15 });
+  drawSibling(L.sib, c.x + 4, c.y - 2 - hop, .9, -1, { blink: amb < sibBlink.until, flap: jumping ? Math.sin(amb * 30) * .6 : Math.sin(amb * 3) * .15 });
   if (mode !== 'celebrate') drawBubble(c.x + 4, c.y - 64 - hop, L.bubble);
 }
 
@@ -280,6 +311,33 @@ function drawLever(lv) {
   if (inReach && !levers.has(lv.g)) drawBubble(c.x + 4, c.y - 40 - (reduced ? 0 : Math.abs(Math.sin(amb * 4)) * 4), coarse ? 'GOLPE' : 'GOLPE: J');
   else if (!levers.has(lv.g) && !reduced && mode === 'playing') { g.beginPath(); g.arc(tip.x, tip.y, 11 + Math.sin(amb * 5) * 2, 0, Math.PI * 2); g.strokeStyle = 'rgba(224,120,44,.8)'; g.lineWidth = 1.6; g.stroke(); }
 }
+/* Maceta: se empuja de lado; si cae en un hueco, lo tapa */
+function drawPot(p) {
+  const e = smooth(clamp(p.t, 0, 1)), x = lerp(p.fromX, p.x, e), c = topCenter(x, p.row), sink = p.sunk ? e * 14 : 0;
+  g.save(); g.translate(c.x, c.y + sink); g.globalAlpha = p.sunk ? 1 - e * .6 : 1;
+  ell(0, 3, 17, 5, 'rgba(20,20,20,.22)');
+  if (L.potStyle === 'box') {   // en el almacén y el congelador son cajas
+    rrect(-15, -26, 30, 28, 2.5, '#b98d5b', '#4f3a24', 1.4); g.fillStyle = '#e2bd48'; g.fillRect(-3, -26, 6, 28);
+    line([P(-15, -12), P(15, -12)], '#4f3a24', 1); line([P(-9, -20), P(-5, -16)], '#4f3a24', 1.2); g.restore(); return;
+  }
+  poly([P(-14, -22), P(14, -22), P(10, 2), P(-10, 2)], '#a5674a', '#3a2f26', 1.4); rrect(-16, -26, 32, 6, 2, '#b97a5a', '#3a2f26', 1.3);
+  for (const [k, h] of [[-.5, 22], [0, 28], [.5, 20]]) { line([P(k * 8, -25), P(k * 18, -25 - h)], '#55613a', 2); ell(k * 18, -27 - h, 6, 3.2, k ? '#6b7a44' : '#7d8c50', k); }
+  g.restore();
+}
+/* Viento: una manga en la pared marca hacia dónde sopla; las rayas avisan y luego empujan */
+function drawWind(row, w) {
+  const st = Reglas.gust(w, clock), side = w.dir > 0 ? -.55 : 4.65, c = topCenter(side, row), sway = reduced ? 0 : Math.sin(amb * (st.blowing ? 18 : 3)) * (st.blowing ? 3 : 1);
+  line([P(c.x, c.y + 6), P(c.x, c.y - 26)], '#2f2c28', 2);
+  const len = st.blowing ? 30 : st.warn ? 18 : 9, drop = st.blowing ? 2 : st.warn ? 8 : 16;
+  poly([P(c.x, c.y - 26), P(c.x + w.dir * len, c.y - 24 + drop + sway), P(c.x + w.dir * len, c.y - 16 + drop + sway), P(c.x, c.y - 14)], st.blowing ? '#e0782c' : st.warn ? '#e2bd48' : '#b9b4a8', '#2f2c28', 1.2);
+  if (!(st.blowing || st.warn) || reduced && !st.blowing) return;
+  g.save(); g.globalAlpha = st.blowing ? .75 : .35; g.strokeStyle = '#f2efe6'; g.lineWidth = st.blowing ? 2 : 1.3; g.lineCap = 'round';
+  for (let i = 0; i < 6; i++) {
+    const u = ((reduced ? 0 : amb * (st.blowing ? 1.9 : .9)) + i / 6) % 1, x = w.dir > 0 ? lerp(-.6, 4.6, u) : lerp(4.6, -.6, u), q = topCenter(x, row), y = q.y - 12 - (i % 3) * 13;
+    g.beginPath(); g.moveTo(q.x, y); g.lineTo(q.x + w.dir * (st.blowing ? 34 : 16), y - w.dir * 2); g.stroke();
+  }
+  g.restore();
+}
 /* El hermano rescatado sigue a Pipo, un aterrizaje atrás */
 function drawFollower() {
   const f = follower, u = clamp(f.t, 0, 1), e = smooth(u), jumping = mode === 'celebrate';
@@ -287,7 +345,7 @@ function drawFollower() {
   const lift = u < 1 ? Math.sin(Math.PI * u) * 34 : 0, c = topCenter(x, row, lift);
   const hop = jumping && !reduced ? Math.abs(Math.sin(amb * 9)) * 16 : 0;
   ell(c.x - 13, c.y + 2 + lift, 16, 5, 'rgba(20,20,20,.2)');
-  drawDuck(c.x - 13, c.y - 3 - hop, .86, Math.sign(player.x - x) || 1, { acc: L.sib, blink: amb < sibBlink.until, flap: u < 1 || jumping ? Math.sin(amb * 30) * .5 : 0 });
+  drawSibling(L.sib, c.x - 13, c.y - 3 - hop, .86, Math.sign(player.x - x) || 1, { blink: amb < sibBlink.until, flap: u < 1 || jumping ? Math.sin(amb * 30) * .5 : 0 });
   if (sibQuip && amb < sibQuip.until && !jumping) drawBubble(c.x - 13, c.y - 58, sibQuip.text);
 }
 function drawExit() {
@@ -298,13 +356,14 @@ function platformAndExtras(x, row, kind, b) {
   const o = {};
   if (kind === 'crumble') { const s = crumbles.get(row + ':' + x); if (s) { if (s.state === 'broken') { o.ghost = true; o.ghostColor = 'rgba(160,215,222,.55)'; } else if (s.state === 'shaking') { o.shake = !reduced; o.crack = s.t; } else if (s.state === 'returning') o.alpha = clamp(s.t / .35, 0, 1); } }
   if (kind === 'blink') { const st = blinkState(row, b); if (!st.on) { o.ghost = true; o.ghostColor = 'rgba(255,214,90,.6)'; o.ghostFill = 'rgba(255,214,90,.07)'; o.charge = st.charge; } else { o.warn = st.warn; o.alpha = .4 + .6 * st.appear; } }
+  if (kind === 'belt') o.dir = beltNow(L.rows[row]);
   if (kind === 'gate') { o.group = b.g; if (!Reglas.gateOn(levers, b.g)) { o.ghost = true; o.ghostColor = groupColors(b.g)[0]; o.ghostFill = groupColors(b.g)[3]; } }
   if (L.feather && row === L.feather.row && Math.abs(x - L.feather.x) < .1) o.feather = true;
   const geo = drawPlatform(x, row, kind, o), center = topCenter(x, row);
   const T = THEMES[L.theme];
   if (L.n === 1 && row <= 2 && Math.abs(x - 2) < .1) footprints(center.x, center.y, .75);
   const off = kind === 'gate' && o.ghost; // puente apagado: no se puede pisar
-  if (L.rows[row].checkpoint && x === 2 && !off) drawFlag(center.x + 15, center.y - 6, flags.get(row));
+  if (L.rows[row].checkpoint && x === flagCol(row) && !off) drawFlag(center.x + 15, center.y - 6, flags.get(row));
   if (phase === 'up' && row === nRows() - 1 && x === 2) drawGoal(x, row);
   if (o.feather && !featherGot && !off) drawFeather(x, row);
   const pi = Reglas.packageAt(L.packages, row, x); if (pi >= 0 && !gotPk.has(pi)) drawPackage(x, row);
@@ -328,14 +387,17 @@ function render() {
     if (r.moving) { drawMovingRail(row); platformAndExtras(movingX(row), row, 'moving'); }
     else {
       const items = [];
-      (r.cells || []).forEach(x => { if (!goneNow(row, x)) items.push([x, 'fixed']); }); (r.gate || []).forEach(q => items.push([q.x, 'gate', q])); (r.crumble || []).forEach(x => items.push([x, 'crumble'])); (r.blink || []).forEach(b => items.push([b.x, 'blink', b]));
+      (r.cells || []).forEach(x => { if (!goneNow(row, x)) items.push([x, 'fixed']); }); (r.gate || []).forEach(q => items.push([q.x, 'gate', q])); (r.ice || []).forEach(x => items.push([x, 'ice'])); if (r.belt) r.belt.cells.forEach(x => items.push([x, 'belt']));
+      for (let x = 0; x < 5; x++) if (plugs.has(row + ':' + x)) items.push([x, 'plug']); (r.crumble || []).forEach(x => items.push([x, 'crumble'])); (r.blink || []).forEach(b => items.push([b.x, 'blink', b]));
       items.sort((p, q) => p[0] - q[0]).forEach(it => platformAndExtras(it[0], row, it[1], it[2]));
     }
     for (const d of drones) if (d.row === row) drawDrone(d);
     for (const lv of L.levers || []) if (lv.row === row) drawLever(lv);
+    for (const p of pots) if (p.row === row && !(p.sunk && p.t >= 1)) drawPot(p);
+    if (r.wind) drawWind(row, windNow(r));
   }
   if (phase === 'down') drawExit();
-  if (dusk > .01) { g.fillStyle = 'rgba(14,18,44,' + (.36 * dusk).toFixed(3) + ')'; g.fillRect(0, 0, W, H); } // cae la noche en la bajada
+  if (dusk > .01) { g.fillStyle = 'rgba(' + ((L.down && L.down.tint) || '14,18,44') + ',' + (.36 * dusk).toFixed(3) + ')'; g.fillRect(0, 0, W, H); } // cae la noche en la bajada
   if (follower) drawFollower();
   if (L.n === 1 && phase === 'up' && player.row <= 1 && mode !== 'celebrate') { const a = topCenter(2, 0), b = topCenter(2, 1); g.beginPath(); g.moveTo(a.x, a.y - 3); g.quadraticCurveTo(a.x + 30, a.y - 55, b.x, b.y + 6); g.strokeStyle = 'rgba(240,138,60,.7)'; g.lineWidth = 2; g.setLineDash([4, 6]); g.stroke(); g.setLineDash([]); drawArrow(b.x, b.y + 6, -Math.PI / 2, 'rgba(240,138,60,.85)', 5); }
   drawPlayer();
@@ -412,7 +474,7 @@ function drawScene(kind, sib) {
     ell(260, 214, 240, 28, T.ground);
     const j = reduced ? 0 : Math.abs(Math.sin(amb * 4)) * 6;
     drawDuck(220, 204 - j, 1.8, 1, { acc: 'scarf' });
-    drawDuck(306, 204, 1.7, -1, { acc: lv.sib, blink: Math.sin(amb * 1.3) > .96 });
+    drawSibling(lv.sib, 306, 204, 1.7, -1, { blink: Math.sin(amb * 1.3) > .96 });
     const prev = g; drawBubble(312, 114, lv.bubble); g = prev;
   }
 }

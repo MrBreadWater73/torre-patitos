@@ -10,7 +10,8 @@ function newRun(nick) {
 function resetLevelState() {
   clock = 0; cam = 0; flyover = null; shake = 0; flash = 0; nextFlash = 5;
   player = { row: 0, x: 2, jump: null, fall: null, drop: null, shield: 0, sq: 0, face: 1 };
-  checkpoint = { row: 0, x: 2 }; drones = L.drones.map(d => Object.assign({}, d, { destroyed: false }));
+  checkpoint = { row: 0, x: 2 }; drones = L.drones.map(d => Object.assign({}, d, { destroyed: false, stun: 0 }));
+  pots = (L.pots || []).map(p => ({ row: p.row, x: p.x, sunk: false, fromX: p.x, t: 1 })); plugs = new Set(); beltT = 0; windT = 0;
   phase = 'up'; gotPk = new Set(); levers = new Map(); trail = null; follower = null; dusk = 0; sibQuip = null; leverHit = null;
   crumbles.clear(); flags.clear(); featherGot = false; cooldown = 0; punch = null; pending = null; celebrate = null; particles = []; hover = null; lastHud = '';
 }
@@ -75,8 +76,8 @@ function stepDrop(dt) {
   player.row = next;
   if (d.from - next > MAX_DROP + .35 || next < -.4) fail(d.cause === 'hueco' ? 'hueco' : d.cause);
 }
-function settle(row, sup, floors) {
-  player.row = row; player.x = sup.x; player.jump = null;
+function settle(row, sup, floors, dir) {
+  player.row = row; player.x = sup.x; player.jump = null; beltT = 0; windT = 0;
   player.sq = floors ? .32 + floors * .08 : .3; dust(player.x, row);
   if (floors) { shake = 2 + floors * 2; tone('thud'); if (floors >= 2) showToast(DROP_QUIPS[floors] || 'Auch.', 'drop'); announce('Caíste ' + floors + (floors === 1 ? ' piso.' : ' pisos.')); }
   else tone('land');
@@ -96,6 +97,11 @@ function settle(row, sup, floors) {
   if (goal === 'rescue') rescue();
   else if (phase === 'up' && row === nRows() - 1) announce('Camina hasta ' + L.sibling + '.');
   updateHud(true);
+  // Hielo: si venía de lado, Pipo sigue resbalando hasta topar con algo
+  if (sup.kind === 'ice' && dir && !floors) {
+    const nx = Math.round(sup.x) + dir;
+    if (nx >= 0 && nx <= 4 && lookAt(row)(nx) !== 'blocked') { pending = null; beginHop(nx, row, 'slide'); return; }
+  }
   if (pending && amb - pending.t < .32) { const p = pending; pending = null; move(p.dir, true); } else pending = null;
 }
 /* Ida y vuelta: al tocar al hermano empieza la bajada por la misma torre, que ya cambió */
@@ -103,7 +109,7 @@ function rescue() {
   const top = nRows() - 1;
   phase = 'down'; checkpoint = { row: top, x: 2 }; flags.clear(); pending = null;
   trail = Reglas.newTrail(top, 2); follower = { fromRow: top, fromX: 2, row: top, x: 2, t: 1 };
-  drones = (L.down.drones || L.drones).map(d => Object.assign({}, d, { destroyed: false }));
+  drones = (L.down.drones || L.drones).map(d => Object.assign({}, d, { destroyed: false, stun: 0 }));
   ls.upTime = +ls.time.toFixed(2); player.shield = 1.6; shake = 6;
   sibQuip = L.down.hello ? { text: L.down.hello, until: amb + 3 } : null; nextQuip = amb + 8;
   for (const [r, x] of L.down.gone || []) burst(x, r, '#8d897e', 12, { lift: 0 });
@@ -117,21 +123,33 @@ function moveFollower(row, x) {
   const now = Reglas.followerSpot(trail);
   if (now.row !== before.row || Math.abs(now.x - before.x) > .05) follower = { fromRow: before.row, fromX: before.x, row: now.row, x: now.x, t: 0 };
 }
-function land() {
-  const row = Math.round(player.row), sup = platformAt(row, player.x);
-  player.row = row;
-  if (!sup) { startDrop(causeFor(kindAt(row, player.x))); return; }
-  settle(row, sup, 0);
+function pushPlayer(row, dir, why) {
+  const nx = Math.round(player.x) + dir;
+  if (nx < 0 || nx > 4 || Reglas.potAt(pots, row, nx)) return;
+  pending = null; beginHop(nx, row, why);
 }
-function beginHop(tx, tr) {
+function land() {
+  const row = Math.round(player.row), sup = platformAt(row, player.x), j = player.jump || {};
+  player.row = row;
+  if (!sup) { startDrop(j.why === 'wind' ? 'viento' : causeFor(kindAt(row, player.x))); return; }
+  settle(row, sup, 0, j.dir || 0);
+}
+function beginHop(tx, tr, why) {   // why: 'slide' (hielo), 'belt' (banda) o 'wind' (viento) cuando no lo decidió el jugador
   if (mode !== 'playing' || player.jump || player.fall || player.drop) return false;
   if (tr < 0 || tr >= nRows()) return false;
   if (tx < -.1 || tx > 4.1) { player.sq = .12; return false; } // fuera de la torre no hay nada que pisar
   const dx = Math.abs(tx - player.x), dr = Math.abs(tr - player.row);
   if (dr > 1.01 || (dr > .1 && dx > .76) || (dr < .1 && (dx > 1.18 || dx < .08))) return false;
-  player.jump = { fromX: player.x, fromRow: player.row, toX: tx, toRow: tr, elapsed: 0, duration: JUMP };
-  if (tx < player.x - .05) player.face = -1; else if (tx > player.x + .05) player.face = 1;
-  player.sq = -.2; tone('hop'); return true;
+  const side = dr < .1 ? Math.sign(tx - player.x) || 1 : 0;
+  if (Reglas.potAt(pots, tr, tx)) {            // hay una maceta: de lado se empuja, de frente estorba
+    const res = side ? Reglas.pushPot(pots, tr, Math.round(tx), side, lookAt(tr)) : { moved: false };
+    if (!res.moved) { player.sq = .12; if (!why) tone('thud'); return false; }
+    res.pot.fromX = res.from; res.pot.t = 0; tone('thud'); dust(res.pot.x, tr);
+    if (res.sunk) { plugs.add(tr + ':' + res.pot.x); shake = 3; announce('La maceta tapó el hueco.'); }
+  }
+  player.jump = { fromX: player.x, fromRow: player.row, toX: tx, toRow: tr, elapsed: 0, duration: why === 'slide' ? .2 : why ? .3 : JUMP, dir: side, why, flat: !!why };
+  if (!why) { if (tx < player.x - .05) player.face = -1; else if (tx > player.x + .05) player.face = 1; }
+  player.sq = why ? 0 : -.2; if (!why) tone('hop'); return true;
 }
 const DIRS = { up: [0, 1], down: [0, -1], left: [-1, 0], right: [1, 0] };
 function move(dir, fromBuffer) {
@@ -144,11 +162,11 @@ function move(dir, fromBuffer) {
 function attack() {
   if (mode !== 'playing' || !combat || cooldown > 0 || player.fall) return false;
   cooldown = .78;
-  const near = drones.filter(d => !d.destroyed && Reglas.inPunchReach(player.row, player.x, droneX(d), d.row)).sort((a, b) => Math.abs(player.x - droneX(a)) - Math.abs(player.x - droneX(b)));
+  const near = drones.filter(d => !d.destroyed && !(d.stun > 0) && Reglas.inPunchReach(player.row, player.x, droneX(d), d.row)).sort((a, b) => Math.abs(player.x - droneX(a)) - Math.abs(player.x - droneX(b)));
   const d = near[0], lv = d ? null : Reglas.leverInReach(L.levers, Math.round(player.row), player.x, Reglas.PUNCH_REACH);
   const dir = d ? Math.sign(droneX(d) - player.x) || 1 : lv ? Math.sign(lv.x - player.x) || 1 : player.face;
   punch = { age: 0, dir, far: !!(d || lv) }; tone('punch');
-  if (d) { d.destroyed = true; ls.kills++; shake = 5; burst(droneX(d), d.row, '#e97c62', 22, { lift: 50 }); burst(droneX(d), d.row, '#ffce4c', 10, { lift: 50 }); tone('destroy'); announce('Dron apartado.'); }
+  if (d) { d.fx = droneX(d); d.stun = 5; ls.kills++; shake = 5; burst(d.fx, d.row, '#ffce4c', 16, { lift: 40 }); tone('destroy'); announce('Dron aturdido. Aguanta unos segundos como plataforma.'); }
   if (lv) {
     const on = Reglas.toggleLever(levers, lv.g); leverHit = { g: lv.g, t: amb }; shake = 3;
     burst(lv.x, lv.row, '#6fb1cf', 14, { lift: 30 }); tone('checkpoint');
@@ -191,6 +209,8 @@ function simulate(dt) {
   if (phase === 'down' && L.quips && amb > nextQuip) { sibQuip = { text: L.quips[Math.floor(Math.random() * L.quips.length)], until: amb + 2.6 }; nextQuip = amb + 9 + Math.random() * 5; }
   cooldown = Math.max(0, cooldown - dt); player.shield = Math.max(0, player.shield - dt);
   if (punch) { punch.age += dt; if (punch.age > .25) punch = null; }
+  for (const d of drones) if (d.stun > 0) { d.stun -= dt; if (d.stun <= 0) { d.destroyed = true; burst(d.fx, d.row, '#e97c62', 20, { lift: 30 }); tone('crack'); } }
+  for (const p of pots) if (p.t < 1) p.t = Math.min(1, p.t + dt / .22);
   for (const [k, s] of crumbles) {
     s.t += dt;
     if (s.state === 'shaking' && s.t >= .8) { s.state = 'broken'; s.t = 0; const [r, x] = k.split(':').map(Number); burst(x, r, 'rgba(200,236,240,.95)', 10, { shape: 'shard', lift: 0 }); tone('crack'); }
@@ -211,14 +231,23 @@ function simulate(dt) {
   } else if (player.drop) {
     stepDrop(dt);
   } else {
-    const row = Math.round(player.row);
-    if (L.rows[row].moving) player.x = movingX(row);
-    else if (!platformAt(row, player.x)) startDrop(causeFor(kindAt(row, player.x)));
+    const row = Math.round(player.row), r = L.rows[row];
+    if (r.moving) player.x = movingX(row);
+    else {
+      const sup = platformAt(row, player.x);
+      if (!sup) startDrop(causeFor(kindAt(row, player.x)));
+      else {
+        // Banda transportadora: arrastra una casilla cada poco más de medio segundo
+        if (sup.kind === 'belt') { beltT += dt; if (beltT >= .55) { beltT = 0; pushPlayer(row, beltNow(r), 'belt'); } } else beltT = 0;
+        // Ráfaga: mientras sopla, empuja una casilla cada rato; la pared y las macetas frenan
+        if (r.wind && Reglas.gust(r.wind, clock).blowing) { windT += dt; if (windT >= .4) { windT = 0; pushPlayer(row, windNow(r).dir, 'wind'); } } else windT = 0;
+      }
+    }
   }
   if (mode === 'playing' && !player.fall && player.shield <= 0) {
     const p = topCenter(player.x, player.row, jumpLift());
     for (const d of drones) {
-      if (d.destroyed || Math.abs(player.row - d.row) > .52) continue;
+      if (d.destroyed || d.stun > 0 || Math.abs(player.row - d.row) > .52) continue;
       const q = topCenter(droneX(d), d.row, 0), dx = (p.x - q.x) / 35, dy = (p.y - 23 - q.y + 34) / 32;
       if (dx * dx + dy * dy < 1) { fail('dron'); break; }
     }

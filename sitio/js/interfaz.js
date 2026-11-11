@@ -30,7 +30,7 @@ function updateSide() {
 }
 function updateLegend() {
   const has = k => L.rows.some(r => k === 'moving' ? r.moving : (r[k] || []).length);
-  const items = [[THEMES[L.theme].top, 'Plataforma fija', true], ['#93a6ae', 'Plataforma móvil', has('moving')], ['#6fb1cf', 'Puente con palanca', has('gate')], ['#d9a441', 'Paquete: junta los 3', !!(L.packages || []).length], ['#c4d6d0', 'Vidrio agrietado', has('crumble')], ['#e3c24a', 'Placa eléctrica', has('blink')], ['#d7d3c8', 'Dron de reparto', true], ['#e0782c', 'Bandera de avance', true], ['#cdb76a', 'Pluma opcional', true]];
+  const items = [[THEMES[L.theme].top, 'Plataforma fija', true], ['#93a6ae', 'Plataforma móvil', has('moving')], ['#6fb1cf', 'Puente con palanca', !!(L.levers || []).length], ['#d9a441', 'Paquete: junta los 3', !!(L.packages || []).length], ['#c4d6d0', 'Vidrio agrietado', has('crumble')], [L.potStyle === 'box' ? '#b98d5b' : '#a5674a', (L.potStyle === 'box' ? 'Caja' : 'Maceta') + ': se empuja', !!(L.pots || []).length], ['#d3edf4', 'Hielo: resbalas', has('ice')], ['#3f4248', 'Banda transportadora', L.rows.some(r => r.belt)], ['#e0782c', 'Viento: mira la manga', L.rows.some(r => r.wind)], ['#e3c24a', 'Placa eléctrica', has('blink')], ['#d7d3c8', 'Dron de reparto', true], ['#e0782c', 'Bandera de avance', true], ['#cdb76a', 'Pluma opcional', true]];
   ui.legend.innerHTML = items.filter(i => i[2]).map(i => `<span><i style="background:${i[0]};box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)"></i>${i[1]}</span>`).join('');
 }
 
@@ -81,26 +81,26 @@ function showSummary() {
   mode = 'menu'; const i = L.n - 1, last = i === LEVELS.length - 1, st = STORY.rescue[i];
   const stats = `<div class="mini-stats"><div><strong>${fmt(ls.time)}</strong>Tiempo</div><div><strong>${ls.falls}</strong>Muertes</div><div><strong>${ls.kills}</strong>Drones</div><div><strong>${ls.feather ? '✦' : '—'}</strong>Pluma</div></div>`;
   if (!last) {
-    showOverlay(`<p class="meta">Expediente ${L.n} · cerrado</p><span class="ribbon green">Rescatada: ${esc(L.sibling)}</span><canvas class="vignette" data-vignette aria-hidden="true"></canvas>
+    showOverlay(`<p class="meta">Expediente ${L.n} · cerrado</p><span class="ribbon green">A salvo: ${esc(L.sibling)}</span><canvas class="vignette" data-vignette aria-hidden="true"></canvas>
       <h2>${esc(L.sibling)} está a salvo. Más o menos.</h2><p class="lead story-text">${esc(st.text)}</p>${stats}
       <div class="actions"><button class="btn duck" data-action="next-level" data-primary>${ICON_PLAY}Siguiente expediente</button></div>`, { center: true, wide: true, scene: 'rescue', art: st.art, sib: i });
   } else {
     const tot = run.levels.reduce((s, l) => s + (l ? l.time : 0), 0), falls = run.levels.reduce((s, l) => s + (l ? l.falls : 0), 0), fe = run.levels.filter(l => l && l.feather).length;
     showOverlay(`<p class="meta">Incidente 0427 · resuelto</p><span class="ribbon green">Caso cerrado</span><canvas class="vignette" data-vignette aria-hidden="true"></canvas>
       <h2>La familia Pata, otra vez completa</h2><p class="lead story-text">${esc(st.text)}</p>
-      <div class="mini-stats"><div><strong>${fmt(tot)}</strong>Total</div><div><strong>${falls}</strong>Muertes</div><div><strong>${run.levels.reduce((s, l) => s + (l ? l.kills : 0), 0)}</strong>Drones</div><div><strong>${fe}/3</strong>Plumas</div></div>
+      <div class="mini-stats"><div><strong>${fmt(tot)}</strong>Total</div><div><strong>${falls}</strong>Muertes</div><div><strong>${run.levels.reduce((s, l) => s + (l ? l.kills : 0), 0)}</strong>Drones</div><div><strong>${fe}/${LEVELS.length}</strong>Plumas</div></div>
       <div class="actions"><button class="btn duck" data-action="name" data-primary>Firmar el expediente</button></div>`, { center: true, wide: true, scene: 'ending', art: st.art });
   }
 }
 function rankFor(time) {
-  const done = Store.all().filter(r => r.completed >= 3 && r.nick && r.id !== run.id);
+  const done = Store.all().filter(r => r.completed >= LEVELS.length && r.nick && r.id !== run.id);
   return done.filter(r => r.totalTime < time).length + 1;
 }
 function showNameEntry(err) {
   const tot = run.totalTime, pos = rankFor(tot), last = store.get('torrePatitos.nick', '');
   showOverlay(`<div class="arcade"><p class="meta">Registro oficial de récords</p><span class="ribbon">${pos <= 3 ? 'Nuevo récord' : 'Fin del juego'}</span>
     <h2>Firma aquí</h2>
-    <div class="score-line"><div><small>Tiempo</small><b>${fmt(tot)}</b></div><div><small>Lugar</small><b>#${pos}</b></div><div><small>Plumas</small><b>${run.levels.filter(l => l && l.feather).length}/3</b></div></div>
+    <div class="score-line"><div><small>Tiempo</small><b>${fmt(tot)}</b></div><div><small>Lugar</small><b>#${pos}</b></div><div><small>Plumas</small><b>${run.levels.filter(l => l && l.feather).length}/${LEVELS.length}</b></div></div>
     <form id="nameForm" novalidate><div class="field"><label for="nameInput">Tu nombre para el tablero</label>
     <input id="nameInput" class="arcade-input" maxlength="14" autocomplete="nickname" spellcheck="false" placeholder="PIPO" value="${esc(last)}" autofocus>
     <p class="hint">Entre 2 y 14 letras o números. Quedará en el tablero para siempre, o hasta que alguien borre la base de datos.</p></div>
@@ -140,7 +140,7 @@ function submitSurvey(fd) {
   out.at = new Date().toISOString(); run.survey = out; Store.save(run); tone('checkpoint'); showThanks(true);
 }
 function showThanks(answered) {
-  const done = Store.all().filter(r => r.completed >= 3 && r.nick).sort((a, b) => a.totalTime - b.totalTime);
+  const done = Store.all().filter(r => r.completed >= LEVELS.length && r.nick).sort((a, b) => a.totalTime - b.totalTime);
   const pos = done.findIndex(r => r.id === run.id) + 1;
   showOverlay(`<p class="meta">Expediente archivado</p><span class="ribbon green">${answered ? 'Recibido' : 'Archivado'}</span><h2>${answered ? 'Gracias por tu tiempo' : 'Récord guardado'}</h2>
     <p class="lead">${pos ? `${esc(run.nick)}, quedaste en el lugar <strong>${pos}</strong> de ${done.length} en el tablero. Felicidades, supongo.` : 'Tu partida ya aparece en las estadísticas.'}</p>

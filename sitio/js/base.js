@@ -9,7 +9,7 @@ const CONFIG = Object.assign({
   SUPABASE_URL: '',
   SUPABASE_KEY: '', // llave publicable (sb_publishable_…) o la anon key heredada
   // Rutas opcionales a ilustraciones (por ejemplo, generadas con Gemini). Vacío = ilustración dibujada.
-  ART: { intro1:'', intro2:'', intro3:'', intro4:'', rescue1:'', rescue2:'', ending:'' }
+  ART: { intro1:'', intro2:'', intro3:'', intro4:'', rescue1:'', rescue2:'', rescue3:'', rescue4:'', rescue5:'', rescue6:'', ending:'' }
 }, window.TORRE_CONFIG || {});
 
 /* ============================================================

@@ -36,6 +36,33 @@ const Reglas = {
   },
   followerSpot: trail => ({ row: trail[0].row, x: trail[0].x }),
 
+  /* Macetas: se empujan una casilla; en un hueco lo tapan y dejan de estorbar */
+  potAt: (pots, row, x) => (pots || []).find(p => !p.sunk && p.row === row && Math.abs(p.x - x) < .5) || null,
+  pushPot(pots, row, x, dir, look) {   // look(x) → 'floor' | 'hole' | 'blocked'
+    const pot = Reglas.potAt(pots, row, x); if (!pot) return null;
+    const nx = Math.round(x) + dir;
+    if (nx < 0 || nx > 4 || Reglas.potAt(pots, row, nx)) return { moved: false };
+    const what = look(nx); if (what !== 'floor' && what !== 'hole') return { moved: false };
+    const from = pot.x; pot.x = nx; pot.sunk = what === 'hole';
+    return { moved: true, sunk: pot.sunk, from, pot };
+  },
+  /* Hielo: Pipo sigue de largo hasta topar con piso, un hueco, una maceta o la pared */
+  slide(x, dir, look) {                // look(x) → 'ice' | 'floor' | 'hole' | 'blocked'
+    for (let cur = x; ;) {
+      const nx = cur + dir; if (nx < 0 || nx > 4) return { x: cur, fall: false };
+      const what = look(nx);
+      if (what === 'blocked') return { x: cur, fall: false };
+      if (what !== 'ice') return { x: nx, fall: what === 'hole' };
+      cur = nx;
+    }
+  },
+  /* Viento: sopla `on` segundos de cada `period`, y avisa 0.9 s antes */
+  gust(w, t) { const ph = ((t + (w.o || 0)) % w.period + w.period) % w.period, blowing = ph < w.on; return { blowing, warn: !blowing && w.period - ph < .9 }; },
+  /* Bandas: en la bajada pueden girar al revés */
+  beltDir: (belt, phase, flip) => belt.dir * (phase === 'down' && flip ? -1 : 1),
+  /* Dron aturdido por el golpe: sirve de plataforma donde quedó congelado */
+  droneHolds: (d, row, x) => d.stun > 0 && d.row === row && Math.abs(d.fx - x) <= .6,
+
   /* Paquetes: al juntarlos todos se enciende el grupo 'pk' (la puerta) */
   packageAt(list, row, x) { return (list || []).findIndex(p => p.row === row && Math.abs(p.x - x) < .5); },
 
@@ -52,41 +79,72 @@ const Reglas = {
     const allPk = (1 << pk.length) - 1;
     const movingCols = m => [0, 1, 2, 3, 4].filter(k => Math.abs(k - m.c) <= m.a + .5);
     const gateOpen = (g, lv, got) => g === 'pk' ? got === allPk : !!(lv & (1 << groups.indexOf(g)));
+    // Estado de las macetas: columna de cada una, o columna + 10 si ya tapó un hueco
+    const pots0 = (level.pots || []).map(p => p.x), potRow = (level.pots || []).map(p => p.row);
+    const potIn = (pots, row, x) => pots.findIndex((px, i) => potRow[i] === row && px === x);
+    const dronesOf = ph => (ph === 'down' && level.down && level.down.drones) || level.drones || [];
+    const floorKind = (ph, row, x) => {           // lo que hay dibujado en el nivel, sin estado
+      const r = rows[row]; if (!r) return null;
+      if (r.moving) return movingCols(r.moving).includes(x) ? 'moving' : null;
+      if ((r.cells || []).includes(x) && !Reglas.cellGone(level.down && level.down.gone, ph, row, x)) return 'floor';
+      if ((r.ice || []).includes(x)) return 'ice';
+      if (r.belt && r.belt.cells.includes(x)) return 'floor';
+      if ((r.crumble || []).includes(x) || (r.blink || []).some(b => b.x === x)) return 'floor';
+      return (r.gate || []).some(q => q.x === x) ? 'gate' : null;
+    };
     // ¿Hay algo que pisar en (row, x) con este estado?
-    const solid = (ph, row, x, lv, got) => {
-      const r = rows[row]; if (!r) return false;
-      if (r.moving) return movingCols(r.moving).includes(x);
-      if ((r.cells || []).includes(x) && !Reglas.cellGone(level.down && level.down.gone, ph, row, x)) return true;
-      if ((r.crumble || []).includes(x) || (r.blink || []).some(b => b.x === x)) return true;
-      const q = (r.gate || []).find(q => q.x === x); return !!q && gateOpen(q.g, lv, got);
+    const solid = (ph, row, x, s) => {
+      const k = floorKind(ph, row, x);
+      if (k === 'gate') return gateOpen(rows[row].gate.find(q => q.x === x).g, s.lv, s.got);
+      if (k) return true;
+      if (potIn(s.pots, row, x + 10) >= 0) return true;                                   // maceta tapando el hueco
+      return dronesOf(ph).some(d => d.row === row && Math.abs(x - d.center) <= d.span);   // dron aturdido como puente
     };
     // Dónde termina Pipo si salta a (row, x): ahí mismo, o tras caer hasta 3 pisos, o null si muere
-    const landing = (ph, row, x, lv, got) => {
+    const landing = (ph, row, x, s) => {
       if (x < 0 || x > 4 || row < 0 || row > top) return null;
-      if (solid(ph, row, x, lv, got)) return row;
-      for (let k = row - 1; k >= 0 && row - k <= Reglas.MAX_DROP; k--) if (solid(ph, k, x, lv, got)) return k;
+      if (solid(ph, row, x, s)) return row;
+      for (let k = row - 1; k >= 0 && row - k <= Reglas.MAX_DROP; k--) if (solid(ph, k, x, s)) return k;
       return null;
     };
-    const key = s => s.ph + ':' + s.row + ':' + s.x + ':' + s.lv + ':' + s.got;
-    const arrive = (ph, row, x, lv, got) => {
+    const key = s => s.ph + ':' + s.row + ':' + s.x + ':' + s.lv + ':' + s.got + ':' + s.pots.join(',');
+    const arrive = (s, row, x) => {
+      let ph = s.ph, got = s.got;
       if (ph === 'up') { const i = Reglas.packageAt(pk, row, x); if (i >= 0) got |= 1 << i; }
       if (ph === 'up' && level.down && row === top && x === 2) ph = 'down';   // tocó al hermano: empieza la bajada
-      return { ph, row, x, lv, got };
+      return { ph, row, x, lv: s.lv, got, pots: s.pots };
     };
     const next = s => {
-      const out = [], go = (row, x) => { const k = landing(s.ph, row, x, s.lv, s.got); if (k != null) out.push(arrive(s.ph, k, x, s.lv, s.got)); };
+      const out = [];
+      const vertical = (row, x) => { if (potIn(s.pots, row, x) >= 0) return; const k = landing(s.ph, row, x, s); if (k != null) out.push(arrive(s, k, x)); };
+      const lateral = (x, dir) => {
+        let nx = x + dir, t = s; if (nx < 0 || nx > 4) return;
+        const pi = potIn(s.pots, s.row, nx);
+        if (pi >= 0) {                              // empujar la maceta
+          const to = nx + dir; if (to < 0 || to > 4 || potIn(s.pots, s.row, to) >= 0) return;
+          const pots = s.pots.slice();
+          if (floorKind(s.ph, s.row, to) === null && !solid(s.ph, s.row, to, s)) pots[pi] = to + 10; else if (solid(s.ph, s.row, to, s)) pots[pi] = to; else return;
+          t = Object.assign({}, s, { pots });
+        }
+        let row = landing(t.ph, s.row, nx, t); if (row == null) return;
+        if (row === s.row && floorKind(t.ph, row, nx) === 'ice') {   // resbalar
+          const end = Reglas.slide(nx, dir, c => potIn(t.pots, row, c) >= 0 ? 'blocked' : floorKind(t.ph, row, c) === 'ice' ? 'ice' : solid(t.ph, row, c, t) ? 'floor' : 'hole');
+          nx = end.x; if (end.fall) { row = landing(t.ph, row, nx, t); if (row == null) return; }
+        }
+        out.push(arrive(t, row, nx));
+      };
       const cols = rows[s.row].moving ? movingCols(rows[s.row].moving) : [s.x];
       for (const x of cols) {                       // sobre una plataforma móvil Pipo viaja con ella
-        if (s.row < top && solid(s.ph, s.row + 1, x, s.lv, s.got)) go(s.row + 1, x);
-        if (s.row > 0) go(s.row - 1, x);
-        if (!rows[s.row].moving) { go(s.row, x - 1); go(s.row, x + 1); } else if (x !== s.x) out.push(Object.assign({}, s, { x }));
+        if (s.row < top && solid(s.ph, s.row + 1, x, s)) vertical(s.row + 1, x);
+        if (s.row > 0) vertical(s.row - 1, x);
+        if (!rows[s.row].moving) { lateral(x, -1); lateral(x, 1); } else if (x !== s.x) out.push(Object.assign({}, s, { x }));
       }
       for (const l of level.levers || []) if (l.row === s.row && Math.abs(l.x - s.x) <= Reglas.PUNCH_REACH) out.push(Object.assign({}, s, { lv: s.lv ^ (1 << groups.indexOf(l.g)) }));
       return out;
     };
     const done = s => level.down ? s.ph === 'down' && s.row === 0 : s.row === top && s.x === 2;
     // Recorrido hacia delante desde la planta baja
-    const start = arrive('up', 0, 2, 0, 0), seen = new Map([[key(start), start]]), edges = new Map(), queue = [start];
+    const start = arrive({ ph: 'up', lv: 0, got: 0, pots: pots0 }, 0, 2), seen = new Map([[key(start), start]]), edges = new Map(), queue = [start];
     while (queue.length) {
       const s = queue.shift(), k = key(s), list = done(s) ? [] : next(s);
       edges.set(k, list.map(key));
