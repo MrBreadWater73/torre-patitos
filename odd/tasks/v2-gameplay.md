@@ -37,8 +37,8 @@ Test runner: `node --test tests/` for pure modules (Node 20, zero dependencies).
 - [x] T5 · S4, S6 · inline · Generated final tower (level 7), family following in a line, shutdown chasing from above. RED→GREEN in `tests/final.test.js`; the bot finished it.
 - [x] T6 · S7 · inline · Save and continue per chapter, assist mode (replaces the punch on/off switch, because the punch is now required), yellow site signs that teach each mechanic, slower guard drone in chapter 1. RED→GREEN in `tests/reglas.test.js`; title, save and signs checked in the browser.
 - [x] T7 · S10 · inline · Version per run, `supabase.sql` as install-or-upgrade script, dashboard per version with a before/after table. RED→GREEN in `tests/metricas.test.js`; SQL exercised on a throwaway PostgreSQL 16. The user still has to run the script on Supabase.
-- [ ] T8 · S8, S9 · Animation and audio polish, story for the new levels, illustration prompts.
-- [ ] T9 · S11 · itch.io package (ZIP), page copy, screenshots.
+- [~] T8 · S8, S9 · inline · Done: illustration prompts for the new scenes (commit `1433b3b`), story texts for the seven chapters, synthesized sounds for the new mechanics. Not done: ZzFX, music, deeper animation polish; the new images do not exist yet (the user generates them).
+- [x] T9 · S11 · inline · `empaquetar.sh` builds the itch.io ZIP, `itch/PAGINA.md` has the page copy and steps, `itch/capturas/` has six screenshots. The ZIP was unpacked and served on its own: all files load and the bot finishes a chapter from it. Uploading is the user's step.
 - [ ] T10 · S1 · Tarea 4 report (docx and pdf) with the Tarea 2/3 format.
 
 ## Log
@@ -124,4 +124,5 @@ Test runner: `node --test tests/` for pure modules (Node 20, zero dependencies).
 - **L23 (2026-11-11, decision, T6):** The "Golpe secundario" switch is gone: with levers the punch is required and turning it off made chapter 1 impossible. Its place is taken by "Modo asistido" (drones at 60 % speed, final shutdown at 65 %), suggested once per chapter after four deaths and recorded per run. Progress is saved when a chapter starts and when it ends; a chapter in progress restarts from its ground floor.
 - **L24 (2026-11-11, finding, T5):** A generated tower passed the checker but had three electric plates whose stagger made them impossible to cross in one direction; the checker ignores time and cannot see that. Generated plates now blink together, and the game only uses the 64 towers in `Reglas.TOWER_SEEDS`, each finished by the bot both ways under the shutdown (`towerQA.verifyTowers()` reported 64 checked, 0 failed). Six of 70 candidate seeds were left out.
 - **L25 (2026-11-11, evidence):** End-to-end run in the browser through the real screens: the seven chapters played by the bot, each summary and save in between, the ending, the record signature, the survey with seven favorite options and the thanks screen; saved progress is cleared at the end; no console errors.
+- **L26 (2026-11-11, scope, T8):** ZzFX and music were researched and recommended (L7) but not integrated: sound stays on the existing synthesized tones, extended to the new events. Music needs the user's ear to choose tracks. Left as a follow-up, not silently dropped.
 

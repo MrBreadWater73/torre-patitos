@@ -2,3 +2,4 @@
 .atl/
 .playwright-mcp/
 .codegraph/
+dist/

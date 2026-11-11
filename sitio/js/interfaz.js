@@ -10,13 +10,13 @@ function updateHud(force) {
   ls.best = Math.max(ls.best || 0, row);
   const key = [L.n, row, Math.floor(ls.time), ls.falls, ls.kills, featherGot, mode, Math.ceil(cooldown * 10), combat, !!player.fall, ls.best, phase, gotPk.size].join('|');
   if (!force && key === lastHud) return; lastHud = key;
-  ui.zone.innerHTML = esc(L.name) + '<small>' + esc(mode === 'celebrate' ? '¡' + L.sibling + ' a salvo!' : (phase === 'down' ? 'De regreso · ' : '') + zoneName(row)) + '</small>';
+  ui.zone.innerHTML = esc(L.name) + '<small>' + esc(mode === 'celebrate' ? '¡' + L.sibling + ' a salvo!' : (phase === 'down' ? '↓ ' : '') + zoneName(row)) + '</small>';
   ui.chips.forEach((c, i) => { c.classList.toggle('current', i === L.n - 1); c.classList.toggle('done', !!(run && run.levels[i] && run.levels[i].done) && i !== L.n - 1); });
   ui.time.textContent = fmt(ls.time);
   ui.total.textContent = fmt(run.levels.reduce((s, l) => s + (l ? l.time : 0), 0));
   ui.falls.textContent = ls.falls; ui.drones.textContent = ls.kills;
   const nPk = (L.packages || []).length; ui.rowPackages.hidden = !nPk; ui.packages.textContent = gotPk.size + ' / ' + nPk;
-  ui.feather.textContent = featherGot ? 'Conseguida ✦' : 'Por descubrir'; ui.feather.classList.toggle('got', featherGot);
+  ui.feather.textContent = !L.feather ? 'No hay aquí' : featherGot ? 'Conseguida ✦' : 'Por descubrir'; ui.feather.classList.toggle('got', featherGot);
   // Con ida y vuelta, la barra se llena hasta la mitad al subir y se completa al bajar
   const progress = !L.down ? ls.best / top : phase === 'up' ? ls.best / top * .5 : .5 + (top - row) / top * .5;
   ui.height.textContent = phase === 'down' ? 'Bajando · piso ' + row : 'Piso ' + ls.best + ' / ' + top; ui.fill.style.width = progress * 100 + '%';
