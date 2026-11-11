@@ -70,3 +70,22 @@ test('the punch reaches a drone on the same floor up to 1.3 cells away', () => {
   assert.equal(Reglas.inPunchReach(2, 2, 3.4, 2), false);
   assert.equal(Reglas.inPunchReach(2, 2, 2.5, 3), false);     // other floor
 });
+
+test('a saved run can be continued at the first chapter it has not finished', () => {
+  assert.equal(Reglas.resumeAt({ run: { id: 'r1', v: 2, completed: 3, levels: [] } }, 7), 3);
+  assert.equal(Reglas.resumeAt({ run: { id: 'r1', v: 2, completed: 0, levels: [] } }, 7), 0);
+  assert.equal(Reglas.resumeAt({ run: { id: 'r1', v: 2, completed: 7, levels: [] } }, 7), null);   // already finished
+  assert.equal(Reglas.resumeAt({ run: { id: 'r1', completed: 2, levels: [] } }, 7), null);         // a version 1 run
+  assert.equal(Reglas.resumeAt(null, 7), null);
+  assert.equal(Reglas.resumeAt({ run: { v: 2, completed: 2 } }, 7), null);                         // no id, cannot be saved again
+});
+
+test('assist mode slows drones and the final shutdown, and is suggested once after four deaths', () => {
+  assert.equal(Reglas.assisted(1.2, false, 'drone'), 1.2);
+  assert.equal(Reglas.assisted(1.2, true, 'drone'), 0.72);
+  assert.equal(Reglas.assisted(0.42, true, 'chase'), 0.273);
+  assert.equal(Reglas.suggestAssist(3, false, false), false);
+  assert.equal(Reglas.suggestAssist(4, false, false), true);
+  assert.equal(Reglas.suggestAssist(6, false, true), false);    // already suggested in this chapter
+  assert.equal(Reglas.suggestAssist(9, true, false), false);    // already on
+});

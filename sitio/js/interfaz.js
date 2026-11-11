@@ -53,11 +53,13 @@ const ICON_BULB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 
 function showTitle() {
   mode = 'menu'; if (!run) run = { levels: [] }; loadPreview();
+  const at = Reglas.resumeAt(store.get('torrePatitos.progress', null), LEVELS.length);
   showOverlay(`<p class="meta">Incidente 0427 · Estanque municipal</p><span class="ribbon">Caso abierto</span>
     <h2>Pipo no vuela. Pipo trepa.</h2>
-    <p class="lead">Una flota de drones de reparto destruyó el nido familiar en horario de entrega garantizada. Tus hermanos quedaron repartidos en tres estructuras de dudosa legalidad. Nadie más va a ir por ellos.</p>
-    <p>Al final firmas el tablero de récords y llenas una encuesta de 6 preguntas. Es lo justo.</p>
-    <div class="actions"><button class="btn duck" data-action="begin" data-primary>${ICON_PLAY}Abrir el expediente</button><button class="btn link" data-action="stats">Ver récords</button></div>`, { center: true });
+    <p class="lead">Una flota de drones de reparto destruyó el nido familiar en horario de entrega garantizada. Tus hermanos quedaron repartidos en estructuras de dudosa legalidad. Nadie más va a ir por ellos.</p>
+    <p>Son siete expedientes y se guarda tu avance al cerrar cada uno. Al final firmas el tablero de récords y llenas una encuesta de 6 preguntas. Es lo justo.</p>
+    ${at == null ? '' : `<p class="resume-note">Tienes una partida guardada: vas en el expediente ${at + 1} de ${LEVELS.length}.</p>`}
+    <div class="actions">${at == null ? `<button class="btn duck" data-action="begin" data-primary>${ICON_PLAY}Abrir el expediente</button>` : `<button class="btn duck" data-action="resume-run" data-primary>${ICON_PLAY}Continuar</button><button class="btn ghost" data-action="begin">Empezar de nuevo</button>`}<button class="btn link" data-action="stats">Ver récords</button></div>`, { center: true });
 }
 function loadPreview() { L = LEVELS[0]; resetLevelState(); updateSide(); updateLegend(); ls = { time: 0, falls: 0, kills: 0, deaths: [], best: 0 }; updateHud(true); }
 function showStory(i) {
@@ -149,7 +151,8 @@ function showThanks(answered) {
 }
 
 const actions = {
-  begin() { run = newRun(''); run.combat = combat; tone('click'); showStory(0); },
+  begin() { run = newRun(''); run.combat = combat; store.set('torrePatitos.progress', null); tone('click'); showStory(0); },
+  'resume-run'() { const saved = store.get('torrePatitos.progress', null), at = Reglas.resumeAt(saved, LEVELS.length); if (at == null) return actions.begin(); run = saved.run; tone('click'); showLevelIntro(at); },
   'next-story'() { tone('click'); showStory(storyIndex + 1); },
   'skip-story'() { showLevelIntro(0); },
   'to-level'() { showLevelIntro(0); },
@@ -213,12 +216,12 @@ if (fullscreenSupported) {
 }
 
 ui.sound.addEventListener('click', () => { sound = !sound; store.set('torrePatitos.sound', sound); updateSoundUI(); if (sound) tone('checkpoint'); });
-ui.combat.addEventListener('change', e => {
-  combat = e.target.checked; if (run) run.combat = run.combat && combat;
-  // Bug #2: el foco se quedaba en la casilla y el teclado dejaba de mover a Pipo.
-  e.target.blur(); canvas.focus({ preventScroll: true });
+ui.assist.checked = assist;
+ui.assist.addEventListener('change', e => {
+  assist = e.target.checked; store.set('torrePatitos.assist', assist); if (run && assist) run.assist = true;
+  e.target.blur(); canvas.focus({ preventScroll: true });   // que el teclado siga moviendo a Pipo
   if (mode === 'playing' || mode === 'paused') restartLevel();
-  announce(combat ? 'Golpe activado.' : 'Solo saltos.'); updateHud(true);
+  announce(assist ? 'Modo asistido activado.' : 'Modo asistido desactivado.'); updateHud(true);
 });
 const KEYMAP = { arrowup: 'up', w: 'up', ' ': 'up', arrowdown: 'down', s: 'down', arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right' };
 document.addEventListener('keydown', e => {

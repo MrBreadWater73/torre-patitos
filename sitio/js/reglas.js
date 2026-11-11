@@ -67,6 +67,17 @@ const Reglas = {
   /* Dron aturdido por el golpe: sirve de plataforma donde quedó congelado */
   droneHolds: (d, row, x) => d.stun > 0 && d.row === row && Math.abs(d.fx - x) <= .6,
 
+  /* Continuar después: la partida guardada sigue en el primer capítulo sin terminar */
+  resumeAt(saved, nLevels) {
+    const r = saved && saved.run; if (!r || !r.id || !(+r.v >= 2)) return null;
+    const done = Math.max(0, Math.min(nLevels, +r.completed || 0));
+    return done < nLevels ? done : null;
+  },
+  /* Modo asistido: drones al 60 % de velocidad y el apagón del final al 65 % */
+  ASSIST: { drone: .6, chase: .65 },
+  assisted: (value, on, what) => on ? Math.round(value * Reglas.ASSIST[what] * 1000) / 1000 : value,
+  suggestAssist: (falls, on, already) => !on && !already && falls >= 4,
+
   /* Paquetes: al juntarlos todos se enciende el grupo 'pk' (la puerta) */
   packageAt(list, row, x) { return (list || []).findIndex(p => p.row === row && Math.abs(p.x - x) < .5); },
 

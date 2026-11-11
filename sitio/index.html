@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23ffc93a'/%3E%3Ccircle cx='22' cy='15' r='8' fill='%23fff3a6'/%3E%3Cellipse cx='17' cy='27' rx='12' ry='8' fill='%23fff3a6'/%3E%3C/svg%3E">
 <title>La torre de los patitos</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Plataformas en 3 capítulos: Pipo no vuela, pero va a recuperar a su familia de todos modos.">
+<meta name="description" content="Plataformas en 7 capítulos de ida y vuelta: Pipo no vuela, pero va a recuperar a su familia de todos modos.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
@@ -19,7 +19,7 @@
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark" aria-hidden="true"><svg width="36" height="36" viewBox="0 0 40 40"><ellipse cx="17" cy="27" rx="13" ry="9" fill="#f1dc84" stroke="#1f211d" stroke-width="1.5"/><circle cx="23" cy="15" r="9" fill="#e6c64e" stroke="#1f211d" stroke-width="1.5"/><path d="M30 15c5-1 8 0 7 2-2 2-5 2-7 1" fill="#c8621f" stroke="#1f211d" stroke-width="1.2"/><path d="M23.5 13h5" stroke="#1f211d" stroke-width="1.8" stroke-linecap="round"/><path d="M14 21h14v4H14z" fill="#3f8c93" stroke="#1f211d" stroke-width="1.1"/></svg></div>
-      <div><h1>La torre <span>de los patitos</span></h1><p>Tres torres · cero alas</p></div>
+      <div><h1>La torre <span>de los patitos</span></h1><p>Siete torres · cero alas</p></div>
     </div>
     <nav class="tabs" role="tablist" aria-label="Secciones">
       <button class="tab" role="tab" id="tabPlay" aria-selected="true" aria-controls="viewPlay" data-view="play"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg>Jugar</button>
@@ -53,7 +53,7 @@
             <div class="dpad" role="group" aria-label="Controles de salto">
               <button class="up" data-move="up" aria-label="Saltar al piso de arriba">↑</button><button class="left" data-move="left" aria-label="Saltar a la izquierda">←</button><button class="down" data-move="down" aria-label="Saltar al piso de abajo">↓</button><button class="right" data-move="right" aria-label="Saltar a la derecha">→</button>
             </div>
-            <button class="punch" id="punchBtn" aria-label="Golpear un dron cercano (J o X)" title="Golpe (J o X)" disabled><svg viewBox="0 0 32 32" aria-hidden="true" fill="#fff6d0" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M8 26v-9l-4-5 3-4 5 4V7q0-4 4-4h2v9l2-7h4v8l2-5h4v12l-6 8Z"/><path d="M12 12v8m6-8v6m6-5v5"/></svg><span>Golpe</span></button>
+            <button class="punch" id="punchBtn" aria-label="Golpear: drones y palancas (J o X)" title="Golpe (J o X)" disabled><svg viewBox="0 0 32 32" aria-hidden="true" fill="#fff6d0" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M8 26v-9l-4-5 3-4 5 4V7q0-4 4-4h2v9l2-7h4v8l2-5h4v12l-6 8Z"/><path d="M12 12v8m6-8v6m6-5v5"/></svg><span>Golpe</span></button>
           </div>
         </div>
       </section>
@@ -79,10 +79,10 @@
           <div class="ctrl"><div class="keys"><kbd>↑</kbd><kbd>W</kbd><kbd>␣</kbd></div><span>Subir un piso</span></div>
           <div class="ctrl"><div class="keys"><kbd>↓</kbd><kbd>S</kbd></div><span>Bajar un piso</span></div>
           <div class="ctrl"><div class="keys"><kbd>←</kbd><kbd>→</kbd><kbd>A</kbd><kbd>D</kbd></div><span>Saltar a los lados</span></div>
-          <div class="ctrl"><div class="keys"><kbd>J</kbd><kbd>X</kbd></div><span>Golpear un dron cercano</span></div>
+          <div class="ctrl"><div class="keys"><kbd>J</kbd><kbd>X</kbd></div><span>Golpear: drones y palancas</span></div>
           <div class="ctrl"><div class="keys"><kbd>P</kbd><kbd>R</kbd></div><span>Pausa · reiniciar capítulo</span></div>
           <div class="ctrl" id="fullscreenKeyRow"><div class="keys"><kbd>F</kbd></div><span>Pantalla completa</span></div>
-          <div class="toggle"><label><input type="checkbox" id="combatToggle" checked>Golpe secundario</label><small>Desactívalo para resolver todo a saltos, como un pato pacifista. Cambiarlo reinicia el capítulo.</small></div>
+          <div class="toggle"><label><input type="checkbox" id="assistToggle">Modo asistido</label><small>Los drones van más lento y el apagón del final da más ventaja. No cambia tu lugar en el tablero, pero queda anotado. Cambiarlo reinicia el capítulo.</small></div>
         </section>
         <section class="card">
           <h3>Lo que te espera</h3>
@@ -100,7 +100,7 @@
     <div id="statsBody"></div>
   </section>
 
-  <p class="footnote">Prototipo para la clase de diseño de niveles · Curiosidad → Tensión → Satisfacción<br>Personajes y arte originales. Ningún pato fue lastimado; varios fueron reiniciados.</p>
+  <p class="footnote">La torre de los patitos · versión 2.0 · Curiosidad → Tensión → Satisfacción<br>Este trabajo fue desarrollado en la clase de Diseño de Videojuegos de José Luis David Bonilla Carranza.<br>Personajes y arte originales. Ningún pato fue lastimado; varios fueron reiniciados.</p>
   <div id="live" class="sr-only" role="status" aria-live="polite"></div>
   <div class="tooltip" id="tooltip" hidden></div>
   <noscript><p class="footnote">Activa JavaScript para jugar.</p></noscript>

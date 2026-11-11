@@ -9,7 +9,7 @@ const ui = {
   height: $('#heightLabel'), fill: $('#progressFill'), track: $('#progressTrack'),
   sideRibbon: $('#sideRibbon'), sideTitle: $('#sideTitle'), sideObjective: $('#sideObjective'), sideTip: $('#sideTip'),
   time: $('#statTime'), total: $('#statTotal'), falls: $('#statFalls'), drones: $('#statDrones'), feather: $('#statFeather'), packages: $('#statPackages'), rowPackages: $('#rowPackages'),
-  legend: $('#legend'), live: $('#live'), combat: $('#combatToggle'), tooltip: $('#tooltip')
+  legend: $('#legend'), live: $('#live'), assist: $('#assistToggle'), tooltip: $('#tooltip')
 };
 
 let L = LEVELS[0];
@@ -21,6 +21,7 @@ let particles = [], hover = null, hitAreas = [], cooldown = 0, punch = null, pen
 let blinkEye = { next: 2.5, until: 0 }, sibBlink = { next: 3.2, until: 0 };
 let sound = store.get('torrePatitos.sound', false), audio = null, combat = true;
 let phase = 'up', levers = new Map(), trail = null, followers = [], chaseT = 0, chaseY = 99, dusk = 0, sibQuip = null, nextQuip = 0, leverHit = null, gotPk = new Set(); // ida y vuelta, palancas, paquetes
+let assist = store.get('torrePatitos.assist', false), assistTold = false; // modo asistido
 let pots = [], plugs = new Set(), beltT = 0, windT = 0; // macetas, bandas, viento
 let run = null, ls = null, lastHud = '', lastStamp = 0, vignette = null, storyIndex = 0;
 

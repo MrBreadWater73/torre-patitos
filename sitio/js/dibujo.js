@@ -312,6 +312,15 @@ function drawLever(lv) {
   if (inReach && !levers.has(lv.g)) drawBubble(c.x + 4, c.y - 40 - (reduced ? 0 : Math.abs(Math.sin(amb * 4)) * 4), coarse ? 'GOLPE' : 'GOLPE: J');
   else if (!levers.has(lv.g) && !reduced && mode === 'playing') { g.beginPath(); g.arc(tip.x, tip.y, 11 + Math.sin(amb * 5) * 2, 0, Math.PI * 2); g.strokeStyle = 'rgba(224,120,44,.8)'; g.lineWidth = 1.6; g.stroke(); }
 }
+/* Letrero de obra pegado a la torre: enseña cada mecánica la primera vez que aparece */
+function drawSign(sg) {
+  const p = project(4.72, sg.row), x = p.x + 30, y = p.y - 34;
+  g.save(); g.font = '600 11px "IBM Plex Mono", ui-monospace, monospace';
+  const w = Math.min(g.measureText(sg.text).width + 14, W - x - 4);
+  line([P(p.x + 12, y + 10), P(x, y + 10)], '#2f2c28', 2);
+  rrect(x, y, w, 20, 3, '#e2bd48', '#2f2c28', 1.4);
+  g.fillStyle = '#1c1d1f'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(sg.text, x + 7, y + 10.5, w - 12); g.restore();
+}
 /* Maceta: se empuja de lado; si cae en un hueco, lo tapa */
 function drawPot(p) {
   const e = smooth(clamp(p.t, 0, 1)), x = lerp(p.fromX, p.x, e), c = topCenter(x, p.row), sink = p.sunk ? e * 14 : 0;
@@ -408,6 +417,7 @@ function render() {
     for (const lv of L.levers || []) if (lv.row === row) drawLever(lv);
     for (const p of pots) if (p.row === row && !(p.sunk && p.t >= 1)) drawPot(p);
     if (r.wind) drawWind(row, windNow(r));
+    if (phase === 'up') for (const sg of L.signs || []) if (sg.row === row) drawSign(sg);
   }
   if (phase === 'down') drawExit();
   if (dusk > .01) { g.fillStyle = 'rgba(' + ((L.down && L.down.tint) || '14,18,44') + ',' + (.36 * dusk).toFixed(3) + ')'; g.fillRect(0, 0, W, H); } // cae la noche en la bajada

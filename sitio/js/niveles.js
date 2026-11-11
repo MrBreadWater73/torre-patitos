@@ -22,7 +22,8 @@ const LEVELS = [
     packages: [{ row: 5, x: 4 }, { row: 11, x: 0 }, { row: 22, x: 4 }],
     feather: { row: 17, x: 0 },   // secreta: el puente rosa se enciende con una palanca escondida un piso abajo
     levers: [{ row: 1, x: .1, g: 'a' }, { row: 15, x: 4.9, g: 'b' }],
-    drones: [{ row: 3, speed: .92, phase: 1.9, span: 2.65, center: 2 }, { row: 5, speed: 1.1, phase: -.9, span: .85, center: 3.7 }, { row: 8, speed: 1.3, phase: .35, span: 2.65, center: 2 },
+    signs: [{ row: 1, text: 'GOLPE = PALANCA' }, { row: 3, text: 'ESPERA O GOLPEA' }, { row: 5, text: 'PAQUETE: 1 DE 3' }, { row: 6, text: 'SUBE AL PASAR' }],
+    drones: [{ row: 3, speed: .92, phase: 1.9, span: 2.65, center: 2 }, { row: 5, speed: .85, phase: -.9, span: .7, center: 3.8 }, { row: 8, speed: 1.3, phase: .35, span: 2.65, center: 2 },
       { row: 10, speed: 1.05, phase: 2.6, span: 2.2, center: 1.8 }, { row: 14, speed: 1.2, phase: 1.1, span: 1.6, center: 1 }, { row: 19, speed: 1.35, phase: -.4, span: 1.7, center: 2 }, { row: 22, speed: 1.15, phase: .9, span: 2.65, center: 2 }],
     // La bajada: misma torre, de noche. Se cayeron plataformas y hay más drones.
     down: {
@@ -51,6 +52,7 @@ const LEVELS = [
       { crumble: [2, 3, 4] }, { cells: [3, 4], crumble: [1, 2] }, { gate: [{ x: 1, g: 'pk' }, { x: 2, g: 'pk' }, { x: 3, g: 'pk' }] }, { cells: [1, 2, 3] }
     ],
     pots: [{ row: 1, x: 2 }, { row: 10, x: 2 }, { row: 19, x: 3 }],
+    signs: [{ row: 1, text: 'EMPUJA LA MACETA' }, { row: 3, text: 'VIDRIO: NO PARES' }],
     packages: [{ row: 7, x: 4 }, { row: 15, x: 4 }, { row: 23, x: 1 }],
     feather: { row: 20, x: 4 },   // secreta: hay que tapar el hueco del piso 19 con la maceta
     levers: [{ row: 13, x: -.1, g: 'a' }],
@@ -88,6 +90,7 @@ const LEVELS = [
     packages: [{ row: 7, x: 4 }, { row: 17, x: 0 }, { row: 22, x: 4 }],
     feather: { row: 21, x: 4 },   // secreta: la palanca está a contraviento, en la pared izquierda del piso 20
     levers: [{ row: 20, x: -.2, g: 'a' }],
+    signs: [{ row: 2, text: 'MIRA LA MANGA' }, { row: 5, text: 'PARPADEA: SE APAGA' }],
     drones: [{ row: 9, speed: 1, phase: .8, span: 1.3, center: 2 }, { row: 13, speed: 1.2, phase: -.6, span: 2.6, center: 2 }, { row: 17, speed: 1.3, phase: 1.5, span: .7, center: 2.5 }, { row: 21, speed: 1.4, phase: .2, span: 1.3, center: 2 }],
     down: {
       objective: 'Baja con Mimi hasta la planta baja. Llegó la tormenta y el viento cambió de lado.',
@@ -114,6 +117,7 @@ const LEVELS = [
       { belt: { cells: [0, 1, 2, 3], dir: -1 } }, { gate: [{ x: 1, g: 'pk' }, { x: 2, g: 'pk' }, { x: 3, g: 'pk' }] }, { cells: [1, 2, 3] }
     ],
     pots: [{ row: 13, x: 2 }],
+    signs: [{ row: 1, text: 'LA BANDA TE LLEVA' }, { row: 5, text: 'GOLPEA: ES PUENTE' }],
     packages: [{ row: 9, x: 4 }, { row: 18, x: 4 }, { row: 24, x: 3 }],
     feather: { row: 23, x: 4 },   // secreta: solo se llega aturdiendo al dron sobre el hueco del piso 22
     drones: [{ row: 5, speed: .8, phase: .3, span: 1.2, center: 2 }, { row: 9, speed: .85, phase: 1.6, span: 1.2, center: 3 }, { row: 15, speed: 1.2, phase: 2.4, span: .6, center: 2.5 },
@@ -142,6 +146,7 @@ const LEVELS = [
       { gate: [{ x: 1, g: 'pk' }, { x: 2, g: 'pk' }, { x: 3, g: 'pk' }] }, { cells: [1, 2, 3] }
     ],
     pots: [{ row: 3, x: 3 }, { row: 11, x: 4 }, { row: 21, x: 2 }],
+    signs: [{ row: 1, text: 'HIELO: RESBALAS' }, { row: 3, text: 'LA CAJA TE FRENA' }],
     packages: [{ row: 8, x: 4 }, { row: 14, x: 4 }, { row: 23, x: 0 }],
     feather: { row: 19, x: 2 },   // secreta: un puente rosa en medio de dos huecos; la palanca está en el piso 12
     levers: [{ row: 12, x: 4.9, g: 'a' }],
