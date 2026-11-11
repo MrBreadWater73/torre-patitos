@@ -293,3 +293,10 @@ tr.me td:first-child::after{content:" · tú";color:var(--sodium)}
   .fill,.bar .tr i,.col .c,.pie svg path{transition:none}
 }
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}
+/* Dashboard: selector de versión y tabla de antes / después */
+.ver-seg{margin:0 0 14px;flex-wrap:wrap}
+.ver-seg button small{font-family:var(--font-mono);opacity:.7;margin-left:6px}
+table.cmp td.why{color:var(--muted);font-size:12.5px;min-width:220px}
+table.cmp td.delta{font-family:var(--font-mono);font-size:11.5px;white-space:nowrap;color:var(--muted)}
+table.cmp td.delta.good{color:var(--reed)}
+table.cmp td.delta.bad{color:var(--danger)}

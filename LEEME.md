@@ -6,7 +6,8 @@ torre-patitos/
 │   ├── index.html      la página del juego (solo el HTML)
 │   ├── css/juego.css   estilos
 │   ├── js/             el código, en archivos que se cargan en este orden:
-│   │                   base, reglas, mundo, estado, nivel, dibujo, partida,
+│   │                   base, reglas, niveles, niveles-v1, metricas, mundo, estado,
+│   │                   nivel, dibujo, partida,
 │   │                   interfaz, datos, estadisticas, arranque
 │   ├── config.js       aquí pegas la URL y la llave de Supabase
 │   ├── netlify.toml    configuración del sitio estático
@@ -27,6 +28,16 @@ torre-patitos/
    - la **llave publicable** (`sb_publishable_…`). Si tu proyecto solo muestra la llave `anon` (empieza con `eyJ…`), también funciona.
 
 > Nunca pongas la llave secreta (`sb_secret_…` o `service_role`) en `config.js`: esa da acceso total.
+
+### Si tu base ya tiene partidas de la versión 1
+
+Antes de publicar la versión 2, vuelve a pegar **todo** `supabase.sql` en el SQL Editor y presiona **Run**. El mismo archivo actualiza una base existente:
+
+- No borra nada. Las partidas que ya tenías quedan marcadas como versión 1.
+- Amplía los límites a 7 capítulos y agrega tres columnas: `partidas.version`, `partidas.asistido` y `niveles.tiempo_subida`.
+- Se puede correr más de una vez sin problema.
+
+Si publicas la versión 2 sin hacer esto, la base rechaza las partidas nuevas (capítulos del 4 al 7) y cada jugador solo ve las suyas.
 
 ## 2. Conectar el juego
 
@@ -51,7 +62,7 @@ Si los dejas vacíos, el juego funciona igual pero cada quien ve solo sus propia
 
 - Al empezar, cada partida recibe un `id` y un token aleatorio que solo vive en ese navegador.
 - Se guarda como **anónima** al iniciar cada capítulo y al terminarlo. Así el embudo cuenta también a quien abandona a la mitad.
-- Al terminar los 3 capítulos aparece la pantalla de récord: el jugador escribe su nombre (2 a 14 caracteres) y se guarda con sus stats. Después responde la encuesta.
+- Al terminar los 7 capítulos aparece la pantalla de récord: el jugador escribe su nombre (2 a 14 caracteres) y se guarda con sus stats. Después responde la encuesta.
 - El navegador solo puede llamar a dos funciones: `guardar_partida` y `listar_partidas`. Las tablas no se pueden leer ni escribir directo.
 - Una partida solo la puede actualizar quien tiene su token, así que nadie puede cambiar el nombre o el tiempo de otro.
 - Sin login no se puede impedir que alguien envíe partidas inventadas. Si ves algo raro, bórralo desde el Table Editor (la fila de `partidas` borra en cascada sus niveles y encuesta).
@@ -61,9 +72,11 @@ Si los dejas vacíos, el juego funciona igual pero cada quien ve solo sus propia
 Corre esto en el SQL Editor (el esquema `analisis` no se expone al público):
 
 ```sql
-select * from analisis.records;              -- tablero completo
-select * from analisis.resumen_capitulos;    -- % completado, tiempo mediano, caídas, pluma
+select * from analisis.antes_despues;        -- una fila por versión: la comparación antes / después
+select * from analisis.records;              -- tablero completo, por versión
+select * from analisis.resumen_capitulos;    -- % completado, tiempo mediano, subida, caídas, pluma
 select * from analisis.caidas_por_lugar;     -- dónde muere la gente (piso, columna, causa)
+select * from analisis.caidas where en_bajada;  -- solo las muertes de la bajada
 select * from analisis.encuesta;             -- respuestas con etiquetas legibles
 ```
 
@@ -91,5 +104,5 @@ Genera las imágenes con los prompts de `PROMPTS-GEMINI.md`, guárdalas en `siti
 ## Desarrollo
 
 - **Probar en local:** el juego necesita un servidor web (no funciona abriendo el archivo con doble clic). Dentro de `sitio/` corre `python3 -m http.server 8000` y abre `http://localhost:8000`. Ojo: si `config.js` tiene las llaves de Supabase, las partidas de prueba se guardan en la base real; vacíalas mientras pruebas.
-- **Pruebas:** `node --test tests/` corre las pruebas de `sitio/js/reglas.js`, que contiene las reglas del juego que no dependen del dibujo (palancas, ida y vuelta, alcance del golpe).
-- **Modo de prueba:** agrega `?qa` a la URL para pausar el reloj y manejar el juego desde la consola con `towerQA`.
+- **Pruebas:** `node --test tests/` corre las pruebas de `sitio/js/reglas.js` (las reglas del juego que no dependen del dibujo), de los niveles (un verificador comprueba que cada uno se pueda terminar, subida y bajada) y de `sitio/js/metricas.js` (los números del dashboard).
+- **Modo de prueba:** agrega `?qa` a la URL para pausar el reloj y manejar el juego desde la consola con `towerQA`. `towerQA.startLevel(0); towerQA.bot()` hace que un jugador automático termine el capítulo con todos los peligros activos.

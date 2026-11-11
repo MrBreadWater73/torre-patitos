@@ -7,24 +7,12 @@ const sum = a => a.reduce((s, v) => s + v, 0), avg = a => a.length ? sum(a) / a.
 const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
 let heatLevel = 0;
-const CAUSE_COLORS = { hueco: 'var(--pond)', dron: 'var(--danger)', vidrio: 'var(--reed)', apagon: 'var(--duck)' };
-const CHAPTER_COLORS = ['var(--pond)', 'var(--reed)', 'var(--sodium)'];
+const CAUSE_COLORS = { hueco: 'var(--pond)', dron: 'var(--danger)', vidrio: 'var(--reed)', apagon: 'var(--duck)', viento: 'var(--muted)' };
+const CHAPTER_COLORS = ['var(--pond)', 'var(--reed)', 'var(--sodium)', 'var(--duck)', 'var(--danger)', 'var(--muted)', 'var(--ink)'];
 const EMOTION_COLORS = ['var(--pond)', 'var(--sodium)', 'var(--reed)', 'var(--danger)', 'var(--muted)'];
-function compute(runs) {
-  const lv = i => runs.map(r => r.levels[i]).filter(Boolean);
-  const per = [0, 1, 2].map(i => { const all = lv(i), done = all.filter(l => l.done); return { started: all.length, done: done.length, time: median(done.map(l => l.time)), falls: avg(all.map(l => l.falls || 0)), feather: pct(done.filter(l => l.feather).length, done.length), kills: avg(all.map(l => l.kills || 0)), restarts: avg(all.map(l => l.restarts || 0)) }; });
-  const finished = runs.filter(r => r.completed >= 3), surveys = runs.map(r => r.survey).filter(Boolean);
-  const count = (key, n) => { const c = Array(n).fill(0); surveys.forEach(s => { if (s[key] != null && c[s[key]] != null) c[s[key]]++; }); return c; };
-  return {
-    runs: runs.length, players: new Set(runs.filter(r => r.nick).map(r => String(r.nick).toLowerCase())).size, per, finished,
-    medTotal: median(finished.map(r => r.totalTime)), fallsAvg: avg(runs.map(r => sum(r.levels.filter(Boolean).map(l => l.falls || 0)))),
-    surveys: surveys.length, fun: avg(surveys.map(s => s.fun)), clarity: avg(surveys.map(s => s.clarity)),
-    causes: runs.reduce((c, r) => { r.levels.forEach(l => (l && l.deaths || []).forEach(d => { c[d[2]] = (c[d[2]] || 0) + 1; })); return c; }, {}),
-    difficulty: count('difficulty', 5), favorite: count('favorite', 3), emotion: count('emotion', 5),
-    comments: runs.filter(r => r.survey && r.survey.comment).sort((a, b) => (b.survey.at || '').localeCompare(a.survey.at || '')).slice(0, 8),
-    board: finished.filter(r => r.nick).sort((a, b) => a.totalTime - b.totalTime).slice(0, 10)
-  };
-}
+let statsV = null;   // 2, 1 o 'cmp' (antes / después); se elige sola la primera vez
+const statsRuns = () => { const all = Store.all(); return { all, 1: all.filter(r => Metricas.versionOf(r) === 1), 2: all.filter(r => Metricas.versionOf(r) === 2) }; };
+const levelsOf = v => v === 1 ? LEVELS_V1 : LEVELS;
 function bars(items, fmtv) {
   const max = Math.max(1, ...items.map(i => i.value));
   return `<div class="bars">${items.map(i => `<div class="bar" data-tip="${esc(i.tip || (i.label + ': ' + fmtv(i.value)))}"><span class="lab">${esc(i.label)}</span><span class="tr"><i style="width:${(i.value / max * 100).toFixed(1)}%"></i></span><span class="val">${fmtv(i.value)}</span></div>`).join('')}</div>`;
@@ -54,68 +42,90 @@ function renderStats() {
   const body = $('#statsBody'), badge = $('#sourceBadge');
   badge.classList.toggle('shared', Store.shared()); badge.querySelector('span').textContent = Store.ready ? Store.label() : 'Conectando…';
   if (view !== 'stats') return;
-  const runs = Store.all(), s = compute(runs), me = run && run.id;
-  if (!runs.length) {
+  const data = statsRuns(), me = run && run.id;
+  if (!data.all.length) {
     body.innerHTML = `<div class="empty"><h3>Nadie ha jugado. Todavía.</h3><p>Cuando alguien juegue, aquí aparecerán el avance por capítulo, el mapa de muertes, los récords y las respuestas de la encuesta.</p><button class="btn duck" data-go="play">${ICON_PLAY}Jugar la primera partida</button></div>`;
     return;
   }
+  if (statsV == null) statsV = data[2].length ? 2 : 1;
   const n1 = v => v == null ? '—' : (Math.round(v * 10) / 10).toLocaleString('es-MX');
-  body.innerHTML = `
+  const tabs = `<div class="seg ver-seg" role="group" aria-label="Versión del juego">
+    <button data-ver="2" aria-pressed="${statsV === 2}">Versión 2 · 7 capítulos <small>${data[2].length}</small></button>
+    <button data-ver="1" aria-pressed="${statsV === 1}">Versión 1 · 3 capítulos <small>${data[1].length}</small></button>
+    <button data-ver="cmp" aria-pressed="${statsV === 'cmp'}">Antes / después</button></div>`;
+  if (statsV === 'cmp') { body.innerHTML = tabs + compareHtml(data, n1); return; }
+  const runs = data[statsV], lv = levelsOf(statsV), n = lv.length;
+  if (!runs.length) { body.innerHTML = tabs + `<div class="empty"><h3>Todavía no hay partidas de la versión ${statsV}.</h3><p>${statsV === 2 ? 'Juega una partida y vuelve.' : 'Las partidas del prototipo de tres capítulos aparecerían aquí.'}</p></div>`; return; }
+  const s = Metricas.compute(runs, n), v2 = statsV === 2, short = l => l.name.replace(/^(La|El) /, '').replace(' de Entregas Ya!', '');
+  const heatable = lv.map((l, i) => l.generated ? -1 : i).filter(i => i >= 0); if (!heatable.includes(heatLevel)) heatLevel = 0;
+  body.innerHTML = tabs + `
   <div class="kpis">
     <div class="kpi"><span>Partidas</span><strong>${s.runs}</strong><small>${s.players} nombre${s.players === 1 ? '' : 's'} en el tablero</small></div>
     <div class="kpi"><span>Terminaron la historia</span><strong>${pct(s.finished.length, s.runs)}%</strong><small>${s.finished.length} de ${s.runs} partidas</small></div>
     <div class="kpi"><span>Tiempo mediano total</span><strong>${s.medTotal == null ? '—' : fmt(s.medTotal)}</strong><small>de quienes terminaron</small></div>
-    <div class="kpi"><span>Muertes por partida</span><strong>${n1(s.fallsAvg)}</strong><small>promedio, sin contar la zona inicial</small></div>
+    <div class="kpi"><span>Muertes por partida</span><strong>${n1(s.fallsAvg)}</strong><small>${s.deathsPerMin == null ? 'promedio' : n1(s.deathsPerMin) + ' por minuto de juego'}</small></div>
   </div>
   <div class="grid2">
     <section class="panel"><h3>¿Hasta dónde llegan?</h3><p class="sub">Partidas que alcanzaron cada punto de la historia.</p>
-      ${bars([{ label: 'Empezaron cap. 1', value: s.per[0].started }, { label: 'Bajaron a Tina', value: s.per[0].done }, { label: 'Rescataron a Lalo', value: s.per[1].done }, { label: 'Rescataron a Mimi', value: s.per[2].done }, { label: 'Respondieron encuesta', value: s.surveys }].map(i => Object.assign(i, { tip: i.label + ': ' + i.value + ' (' + pct(i.value, s.per[0].started) + '%)' })), v => v)}
+      ${bars([{ label: 'Empezaron cap. 1', value: s.per[0].started }].concat(lv.map((l, i) => ({ label: 'Cap. ' + (i + 1) + ' · ' + l.sibling, value: s.per[i].done })), [{ label: 'Respondieron encuesta', value: s.surveys }]).map(i => Object.assign(i, { tip: i.label + ': ' + i.value + ' (' + pct(i.value, s.per[0].started) + '%)' })), v => v)}
     </section>
-    <section class="panel"><h3>Por capítulo</h3><p class="sub">Tiempo mediano de quienes lo terminaron; muertes y drones en promedio.</p>
-      <div class="table-wrap"><table><thead><tr><th>Capítulo</th><th class="num">Tiempo</th><th class="num">Muertes</th><th class="num">Reinicios</th><th class="num">Pluma</th><th class="num">Drones</th></tr></thead><tbody>
-      ${s.per.map((p, i) => `<tr><td>${i + 1}. ${esc(LEVELS[i].name.replace(/^(La|El) /, ''))}</td><td class="num">${p.time == null ? '—' : fmt(p.time)}</td><td class="num">${n1(p.falls)}</td><td class="num">${n1(p.restarts)}</td><td class="num">${p.done ? p.feather + '%' : '—'}</td><td class="num">${n1(p.kills)}</td></tr>`).join('')}
+    <section class="panel"><h3>Por capítulo</h3><p class="sub">Tiempo mediano de quienes lo terminaron${v2 ? ', separado en subida y bajada' : ''}; muertes y drones en promedio.</p>
+      <div class="table-wrap"><table><thead><tr><th>Capítulo</th><th class="num">Tiempo</th>${v2 ? '<th class="num">Subida</th><th class="num">Bajada</th>' : ''}<th class="num">Muertes</th><th class="num">Pluma</th><th class="num">Drones</th></tr></thead><tbody>
+      ${s.per.map((p, i) => `<tr><td>${i + 1}. ${esc(short(lv[i]))}</td><td class="num">${p.time == null ? '—' : fmt(p.time)}</td>${v2 ? `<td class="num">${p.up == null ? '—' : fmt(p.up)}</td><td class="num">${p.down == null ? '—' : fmt(p.down)}</td>` : ''}<td class="num">${n1(p.falls)}</td><td class="num">${p.done ? p.feather + '%' : '—'}</td><td class="num">${n1(p.kills)}</td></tr>`).join('')}
       </tbody></table></div>
     </section>
   </div>
   <div class="grid2">
     <section class="panel"><h3>Por capítulo, en gráfica</h3><p class="sub">Muertes promedio por partida y tiempo mediano de quienes lo terminaron.</p>
       <div class="chart-pair">
-        <div><h4>Muertes promedio</h4>${cols(s.per.map((p, i) => ({ label: 'Cap. ' + (i + 1), value: p.started ? p.falls : null, tip: LEVELS[i].name + ': ' + n1(p.falls) + ' muertes en promedio' })), n1, 'var(--danger)')}</div>
-        <div><h4>Tiempo mediano</h4>${cols(s.per.map((p, i) => ({ label: 'Cap. ' + (i + 1), value: p.time, tip: LEVELS[i].name + ': ' + (p.time == null ? 'nadie lo ha terminado' : fmt(p.time)) })), fmt, 'var(--pond)')}</div>
+        <div><h4>Muertes promedio</h4>${cols(s.per.map((p, i) => ({ label: (n > 4 ? '' : 'Cap. ') + (i + 1), value: p.started ? p.falls : null, tip: lv[i].name + ': ' + n1(p.falls) + ' muertes en promedio' })), n1, 'var(--danger)')}</div>
+        <div><h4>Tiempo mediano</h4>${cols(s.per.map((p, i) => ({ label: (n > 4 ? '' : 'Cap. ') + (i + 1), value: p.time, tip: lv[i].name + ': ' + (p.time == null ? 'nadie lo ha terminado' : fmt(p.time)) })), fmt, 'var(--pond)')}</div>
       </div>
     </section>
-    <section class="panel"><h3>¿De qué muere la gente?</h3><p class="sub">Todas las muertes registradas en los tres capítulos, por causa.</p>
-      ${pie(Object.keys(CAUSES).map(k => ({ label: CAUSES[k], value: s.causes[k] || 0, color: CAUSE_COLORS[k] })), 'muertes')}
+    <section class="panel"><h3>¿De qué muere la gente?</h3><p class="sub">Todas las muertes registradas, por causa.${v2 && s.downDeaths ? ' ' + s.downDeaths + ' ocurrieron en la bajada.' : ''}</p>
+      ${pie(Object.keys(CAUSES).filter(k => v2 || k !== 'viento').map(k => ({ label: CAUSES[k], value: s.causes[k] || 0, color: CAUSE_COLORS[k] })), 'muertes')}
     </section>
   </div>
   <div class="grid2">
-    <section class="panel"><h3>Dónde muere la gente</h3><p class="sub">Cada punto es un lugar donde alguien perdió a Pipo; más grande = más muertes. Las caídas de hasta 3 pisos no cuentan.</p>
-      <div class="seg" role="group" aria-label="Capítulo del mapa">${LEVELS.map((l, i) => `<button data-heat="${i}" aria-pressed="${i === heatLevel}">Cap. ${i + 1}</button>`).join('')}</div>
+    <section class="panel"><h3>Dónde muere la gente</h3><p class="sub">Cada punto es un lugar donde alguien perdió a Pipo; más grande = más muertes.${v2 ? ' La torre final no aparece porque cambia en cada partida.' : ' Las caídas de hasta 3 pisos no cuentan.'}</p>
+      <div class="seg" role="group" aria-label="Capítulo del mapa">${heatable.map(i => `<button data-heat="${i}" aria-pressed="${i === heatLevel}">Cap. ${i + 1}</button>`).join('')}</div>
       <canvas class="heat" id="heatCanvas" width="560" height="600" aria-label="Mapa de muertes del capítulo ${heatLevel + 1}"></canvas>
       <div class="heat-legend" id="heatLegend"></div>
     </section>
-    <section class="panel"><h3>Encuesta</h3><p class="sub">${s.surveys} respuesta${s.surveys === 1 ? '' : 's'}.</p>
+    <section class="panel"><h3>Encuesta</h3><p class="sub">${s.surveys} respuesta${s.surveys === 1 ? '' : 's'}.${v2 && s.assisted ? ' ' + s.assisted + ' partida' + (s.assisted === 1 ? ' usó' : 's usaron') + ' el modo asistido.' : ''}</p>
       <div class="stat-pair"><div>Diversión<strong>${n1(s.fun)}<small> / 5</small></strong></div><div>Claridad de controles<strong>${n1(s.clarity)}<small> / 5</small></strong></div></div>
       <h4>Dificultad</h4>${cols(SURVEY[1].opts.map((o, k) => ({ label: o, value: s.difficulty[k], tip: o + ': ' + s.difficulty[k] + ' (' + pct(s.difficulty[k], s.surveys) + '%)' })), v => v)}
-      <h4>Capítulo favorito</h4>${pie(SURVEY[2].opts.map((o, k) => ({ label: o, value: s.favorite[k], color: CHAPTER_COLORS[k] })), 'votos')}
+      <h4>Capítulo favorito</h4>${pie(lv.map((l, k) => ({ label: l.name, value: s.favorite[k], color: CHAPTER_COLORS[k] })), 'votos')}
       <h4>Emoción principal</h4>${pie(SURVEY[4].opts.map((o, k) => ({ label: o, value: s.emotion[k], color: EMOTION_COLORS[k] })), 'votos')}
     </section>
   </div>
   <div class="grid2">
-    <section class="panel"><h3>Tablero de récords</h3><p class="sub">Quienes terminaron los tres expedientes y firmaron.</p>
+    <section class="panel"><h3>Tablero de récords</h3><p class="sub">Quienes terminaron los ${n} expedientes y firmaron.</p>
       ${s.board.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Nombre</th><th class="num">Tiempo</th><th class="num">Muertes</th><th class="num">Plumas</th></tr></thead><tbody>
-      ${s.board.map((r, i) => `<tr class="${r.id === me ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.nick)}</td><td class="num">${fmt(r.totalTime)}</td><td class="num">${sum(r.levels.filter(Boolean).map(l => l.falls || 0))}</td><td class="num">${r.levels.filter(l => l && l.feather).length}/3</td></tr>`).join('')}
+      ${s.board.map((r, i) => `<tr class="${r.id === me ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.nick)}</td><td class="num">${fmt(r.totalTime)}</td><td class="num">${sum(r.levels.filter(Boolean).map(l => l.falls || 0))}</td><td class="num">${r.levels.filter(l => l && l.feather).length}/${n}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="sub">Nadie ha registrado un récord todavía.</p>'}
     </section>
     <section class="panel"><h3>Comentarios recientes</h3><p class="sub">Lo que escribieron al final, sin editar.</p>
-      ${s.comments.length ? `<div class="quotes">${s.comments.map(r => `<div class="quote">${esc(r.survey.comment)}<small>Favorito: ${esc(LEVELS[r.survey.favorite] ? LEVELS[r.survey.favorite].name : '—')} · ${esc(SURVEY[4].opts[r.survey.emotion] || '')}</small></div>`).join('')}</div>` : '<p class="sub">Todavía no hay comentarios.</p>'}
+      ${s.comments.length ? `<div class="quotes">${s.comments.map(r => `<div class="quote">${esc(r.survey.comment)}<small>Favorito: ${esc(lv[r.survey.favorite] ? lv[r.survey.favorite].name : '—')} · ${esc(SURVEY[4].opts[r.survey.emotion] || '')}</small></div>`).join('')}</div>` : '<p class="sub">Todavía no hay comentarios.</p>'}
     </section>
   </div>`;
-  drawHeat(runs);
+  drawHeat(runs, lv);
 }
-function drawHeat(runs) {
+/* Antes / después: cada métrica de las dos versiones, junto a la observación que motivó el cambio */
+function compareHtml(data, n1) {
+  if (!data[1].length || !data[2].length) return `<div class="empty"><h3>Falta una de las dos versiones.</h3><p>La comparación necesita partidas de la versión 1 (${data[1].length}) y de la versión 2 (${data[2].length}).</p></div>`;
+  const rows = Metricas.compare(Metricas.compute(data[1], LEVELS_V1.length), Metricas.compute(data[2], LEVELS.length));
+  const show = (r, v) => v == null ? '—' : r.kind === 'time' ? fmt(v) : r.kind === 'pct' ? v + '%' : n1(v);
+  const mark = r => { if (r.v1 == null || r.v2 == null || !r.want || r.v1 === r.v2) return '<td class="num delta">·</td>'; const up = r.v2 > r.v1, good = up === (r.want === 'up'); return `<td class="num delta ${good ? 'good' : 'bad'}">${up ? '▲' : '▼'} ${good ? 'como se buscaba' : 'al revés de lo buscado'}</td>`; };
+  return `<section class="panel"><h3>Antes y después</h3><p class="sub">Versión 1: el prototipo de tres capítulos. Versión 2: el juego de siete, con ida y vuelta. Cada fila responde a una observación de la versión 1.</p>
+    <div class="table-wrap"><table class="cmp"><thead><tr><th>Métrica</th><th class="num">Versión 1</th><th class="num">Versión 2</th><th class="num">Cambio</th><th>Observación que la motivó</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td>${esc(r.label)}</td><td class="num">${show(r, r.v1)}</td><td class="num"><b>${show(r, r.v2)}</b></td>${mark(r)}<td class="why">${esc(r.why)}</td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="sub">La versión 2 es mucho más larga: por eso «terminan la historia» y «muertes por partida» no se comparan directo, y se usa «muertes por minuto».</p></section>`;
+}
+function drawHeat(runs, levels) {
   const cv = $('#heatCanvas'); if (!cv) return;
-  const lvl = LEVELS[heatLevel], n = lvl.rows.length, HX = 74, RY = 46, SK = 11, cx = 300, topY = 84;
+  const lvl = levels[heatLevel], n = lvl.rows.length, HX = 74, RY = 46, SK = 11, cx = 300, topY = 84;
   cv.width = 560; cv.height = Math.round(topY + (n - 1) * RY + 70); cv.setAttribute('aria-label', 'Mapa de muertes del capítulo ' + (heatLevel + 1));
   const c2 = cv.getContext('2d'), prev = g; g = c2; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
   const css = getComputedStyle(document.documentElement), col = v => css.getPropertyValue(v).trim();
@@ -126,7 +136,8 @@ function drawHeat(runs) {
   lvl.rows.forEach((r, row) => {
     const y = mp(-.9, row).y; g.fillStyle = col('--muted'); g.fillText(String(row), 52, y - 4);
     if (r.moving) { const a = mp(r.moving.c - r.moving.a, row), b = mp(r.moving.c + r.moving.a, row); line([P(a.x, a.y - 6), P(b.x + 18, b.y - 6)], dark ? '#4d8796' : '#86cad8', 12); }
-    (r.cells || []).forEach(x => plat(x, row, dark ? '#2e5a40' : '#bfdcc4'));
+    (r.cells || []).concat((r.gate || []).map(q => q.x), r.belt ? r.belt.cells : []).forEach(x => plat(x, row, dark ? '#2e5a40' : '#bfdcc4'));
+    (r.ice || []).forEach(x => plat(x, row, dark ? '#3a6268' : '#d3edf4'));
     (r.crumble || []).forEach(x => plat(x, row, dark ? '#3a6268' : '#cfeef0'));
     (r.blink || []).forEach(b => plat(b.x, row, dark ? '#9a7a2a' : '#e7c255', true));
   });
@@ -154,6 +165,7 @@ $('#statsBody').addEventListener('pointermove', e => {
 $('#statsBody').addEventListener('pointerleave', hideTip);
 $('#statsBody').addEventListener('click', e => {
   const h = e.target.closest('[data-heat]'); if (h) { heatLevel = +h.dataset.heat; renderStats(); return; }
+  const ver = e.target.closest('[data-ver]'); if (ver) { statsV = ver.dataset.ver === 'cmp' ? 'cmp' : +ver.dataset.ver; heatLevel = 0; renderStats(); return; }
   if (e.target.closest('[data-go="play"]')) setView('play');
 });
 

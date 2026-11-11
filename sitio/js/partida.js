@@ -5,7 +5,7 @@
    ============================================================ */
 function newRun(nick) {
   return { id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), v: 2, nick, startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    device: matchMedia('(pointer: coarse)').matches ? 'táctil' : 'teclado', input: { key: 0, pad: 0, tap: 0 }, combat: true, levels: [], totalTime: 0, completed: 0, survey: null };
+    device: matchMedia('(pointer: coarse)').matches ? 'táctil' : 'teclado', input: { key: 0, pad: 0, tap: 0 }, combat: true, assist: false, levels: [], totalTime: 0, completed: 0, survey: null };
 }
 function resetLevelState() {
   clock = 0; cam = 0; flyover = null; shake = 0; flash = 0; nextFlash = 5;

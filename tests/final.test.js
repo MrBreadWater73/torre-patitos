@@ -40,3 +40,11 @@ test('the shutdown waits, then comes down from above at a steady pace', () => {
   assert.equal(Reglas.chaseDead(30, 29), false);
   assert.equal(Reglas.chaseDead(30, 31), true);
 });
+
+test('a generated tower never needs a stunned drone as a bridge', () => {
+  for (let seed = 1; seed <= 25; seed++) {
+    const lvl = Reglas.generate(seed, 30);
+    assert.equal(lvl.bridges, false, 'seed ' + seed);
+    assert.ok(!Reglas.plan(lvl, Reglas.graph(lvl).start).some(e => e.act.bridge), 'seed ' + seed);
+  }
+});

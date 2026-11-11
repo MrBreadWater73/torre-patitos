@@ -83,7 +83,7 @@ const Reglas = {
     const rows = level.rows, top = rows.length - 1;
     const groups = [...new Set((level.levers || []).map(l => l.g))], pk = level.packages || [];
     const allPk = (1 << pk.length) - 1;
-    const movingCols = m => [0, 1, 2, 3, 4].filter(k => Math.abs(k - m.c) <= m.a + .5);
+    const movingCols = m => [0, 1, 2, 3, 4].filter(k => Math.abs(k - m.c) <= m.a + .25);   // columnas que la plataforma cubre con margen, no las que apenas roza
     const gateOpen = (g, lv, got) => g === 'pk' ? got === allPk : !!(lv & (1 << groups.indexOf(g)));
     // Estado de las macetas: columna de cada una, o columna + 10 si ya tapó un hueco
     const pots0 = (level.pots || []).map(p => p.x), potRow = (level.pots || []).map(p => p.row);
@@ -104,7 +104,7 @@ const Reglas = {
       return !!k || potIn(s.pots, row, x + 10) >= 0;                                      // maceta tapando el hueco
     };
     // Dron aturdido como puente: solo sirve de lado, porque el golpe no alcanza otro piso
-    const bridge = (ph, row, x) => dronesOf(ph).some(d => d.row === row && Math.abs(x - d.center) <= d.span);
+    const bridge = (ph, row, x) => level.bridges !== false && dronesOf(ph).some(d => d.row === row && Math.abs(x - d.center) <= d.span);
     // Dónde termina Pipo si salta a (row, x): ahí mismo, o tras caer hasta 3 pisos, o null si muere
     const landing = (ph, row, x, s, viaDrone) => {
       if (x < 0 || x > 4 || row < 0 || row > top) return null;
@@ -189,14 +189,15 @@ const Reglas = {
     const near = t => { for (let d = 0; d < floors; d++) for (const i of [t + d, t - d]) if (i > 2 && i < floors - 2 && withCells(i) >= 0) return i; return 1; };
     const packages = [.25, .5, .75].map(f => { const row = near(Math.round(floors * f)); return { row, x: pick(rows[row].cells) }; }).filter((p, i, a) => a.findIndex(q => q.row === p.row) === i);
     while (packages.length < 3) { const row = near(3 + int(floors - 6)); if (!packages.some(p => p.row === row)) packages.push({ row, x: pick(rows[row].cells) }); }
-    const patrol = () => rows.map((row, i) => i > 2 && i < floors - 1 && !row.checkpoint && !row.moving && r() < .34 ? { row: i, speed: +(.9 + r() * .45).toFixed(2), phase: +(r() * 6).toFixed(2), span: +(1 + r() * 1.6).toFixed(2), center: 2 } : null).filter(Boolean).slice(0, 9);
+    // Drones solo sobre pisos firmes: nada de dron encima de placas que parpadean o vidrio que se rompe
+    const patrol = () => rows.map((row, i) => i > 2 && i < floors - 1 && !row.checkpoint && !row.moving && !row.blink && !row.crumble && r() < .4 ? { row: i, speed: +(.9 + r() * .45).toFixed(2), phase: +(r() * 6).toFixed(2), span: +(1 + r() * 1.6).toFixed(2), center: 2 } : null).filter(Boolean).slice(0, 9);
     const gone = []; rows.forEach((row, i) => { if (i > 1 && i < floors - 1 && !row.checkpoint && (row.cells || []).length >= 3 && r() < .4) gone.push([i, pick(row.cells)]); });
-    return { rows, packages, drones: patrol(), down: { chase: { speed: .42, delay: 3 }, gone, drones: patrol() } };
+    return { rows, packages, bridges: false, drones: patrol(), down: { chase: { speed: .42, delay: 3 }, gone, drones: patrol() } };   // bridges: false = la ruta no depende de aturdir drones
   },
   generate(seed, floors = 30) {
     for (let k = 0; k < 300; k++) { const lvl = Reglas.draft(seed + k * 7919, floors); if (!Reglas.audit(lvl).length) return lvl; }
     const rows = Array.from({ length: floors + 1 }, (_, i) => i === floors - 1 ? { gate: [{ x: 1, g: 'pk' }, { x: 2, g: 'pk' }, { x: 3, g: 'pk' }] } : { cells: [0, 1, 2, 3, 4], checkpoint: i > 0 && i % 5 === 0 });
-    return { rows, packages: [{ row: 3, x: 0 }, { row: 9, x: 4 }, { row: 14, x: 0 }], drones: [], down: { chase: { speed: .42, delay: 3 }, gone: [], drones: [] } };
+    return { rows, packages: [{ row: 3, x: 0 }, { row: 9, x: 4 }, { row: 14, x: 0 }], bridges: false, drones: [], down: { chase: { speed: .42, delay: 3 }, gone: [], drones: [] } };
   },
   /* Para cada estado alcanzable: a cuántos movimientos está la meta y cuál conviene hacer */
   solve(level) {

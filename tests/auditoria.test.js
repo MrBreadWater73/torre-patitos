@@ -105,3 +105,11 @@ test('solve: every state knows its distance to the goal and its next move', () =
   while (!G.done(s)) { s = policy.get(G.key(s)).edge.s; hops++; }
   assert.equal(hops, first.dist);
 });
+
+test('a moving platform does not count for a column it only grazes at the end of its travel', () => {
+  // The platform travels from 0.5 to 3.5; column 4 is touched for an instant and cannot be relied on.
+  const rows = [full, { moving: { c: 2, a: 1.5, s: 1, p: 0 } }, { cells: [4] }, { cells: [2, 3, 4] }];
+  assert.match(Reglas.audit(base({ rows })).join('\n'), /no se puede llegar arriba/);
+  const ok = [full, { moving: { c: 2, a: 1.5, s: 1, p: 0 } }, { cells: [3] }, { cells: [2, 3] }];
+  assert.deepEqual(Reglas.audit(base({ rows: ok })), []);
+});

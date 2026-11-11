@@ -7,7 +7,7 @@ if (QA) window.towerQA = {
   state: () => ({ mode, level: L.n, phase, levers: [...levers.entries()], packages: [...gotPk], pots: pots.map(p => [p.row, p.x, p.sunk]), drones: drones.map(d => ({ row: d.row, x: +(d.stun > 0 ? d.fx : droneX(d)).toFixed(2), stun: +(d.stun || 0).toFixed(2), destroyed: d.destroyed })), followers: followers.map(f => [f.kind, f.row, f.x]), chaseY, clock, cam, player: Object.assign({}, player), checkpoint, featherGot, ls: ls && JSON.parse(JSON.stringify(ls)), run: run && JSON.parse(JSON.stringify(run)), crumbles: [...crumbles.entries()], hitAreas: hitAreas.length }),
   advance(dt) { for (let t = 0; t < dt; t += 1 / 120) simulate(Math.min(1 / 120, dt - t)); render(); if (vignette) drawVignette(); },
   act: name => actions[name](), move, attack, hop: beginHop, startLevel: i => { if (!run || !run.id) run = newRun('QA'); showLevelIntro(i); startPlaying(); },
-  movingX, droneX, blinkState, platformAt, setView, render, Store, compute: () => compute(Store.all()), place(row, x) { player.row = row; player.x = x; player.jump = null; player.fall = null; player.drop = null; },
+  movingX, droneX, blinkState, platformAt, setView, render, Store, compute: v => Metricas.compute(Store.all().filter(r => Metricas.versionOf(r) === (v || 2)), v === 1 ? LEVELS_V1.length : LEVELS.length), place(row, x) { player.row = row; player.x = x; player.jump = null; player.fall = null; player.drop = null; },
   custom(lvl) { LEVELS[0] = Object.assign({ n: 1, name: 'Ensayo', theme: 'morning', sibling: 'Tina', sib: 'phone', tutorial: 0, bubble: '…', objective: '', tip: '', zones: [[99, 'Ensayo']], drones: [] }, lvl); this.startLevel(0); }, // nivel de ensayo
   // Foto del estado de la partida y vuelta atrás: permite probar un salto y deshacerlo si sale mal
   snap() { return JSON.stringify({ clock, amb, cam, player, checkpoint, drones, crumbles: [...crumbles], flags: [...flags], featherGot, cooldown, pending, phase, levers: [...levers], gotPk: [...gotPk], pots, plugs: [...plugs], beltT, windT, trail, followers, chaseT, chaseY, ls, mode, dusk, nextQuip }); },
@@ -27,9 +27,11 @@ if (QA) window.towerQA = {
     const quiet = max => { for (let t = 0; busy() && t < max; t += .02) this.sim(.02); };
     const cur = () => ({ ph: phase, row: Math.round(player.row), x: Math.round(player.x), lv: G.groups.reduce((m, g, i) => m | (levers.get(g) ? 1 << i : 0), 0), got: [...gotPk].reduce((m, i) => m | 1 << i, 0), pots: pots.map(p => p.sunk ? p.x + 10 : p.x) });
     const here = () => policy.get(G.key(cur()));
-    const attempt = goal => {            // hace la jugada que toca; vale si acerca a la meta y Pipo sobrevive 0.6 s más
+    const droneNear = () => drones.some(d => !d.destroyed && !(d.stun > 0) && Reglas.inPunchReach(player.row, player.x, droneX(d), d.row));
+    const attempt = (goal, punchFirst) => {   // hace la jugada que toca; vale si acerca a la meta y Pipo sobrevive 0.6 s más
       const now = here(); if (!now || !now.edge || busy()) return false;
       const deaths = ls.deaths.length, act = now.edge.act;
+      if (punchFirst) { if (act.bridge || act.t === 'punch' || cooldown > 0 || !droneNear()) return false; attack(); this.sim(.1); }   // como haría una persona: aturdir al dron que estorba
       if (act.t === 'punch') attack(); else { if (act.bridge) { attack(); this.sim(.12); } move(act.t); }
       this.sim(.06); quiet(4); if (act.t === 'punch') this.sim(.25);
       if (ls.deaths.length !== deaths) return false;
@@ -43,7 +45,7 @@ if (QA) window.towerQA = {
       const from = here(); if (!from) { out.problems.push('sin ruta desde piso ' + Math.round(player.row) + ' columna ' + Math.round(player.x) + ' (' + phase + ')'); break; }
       const where = 'piso ' + Math.round(player.row) + ' columna ' + Math.round(player.x) + ' (' + phase + '), ' + from.edge.act.t + (from.edge.act.bridge ? ' con dron' : '');
       this.sim(wait0); let ok = false, wait = wait0;
-      for (; wait <= wait0 + 9; wait += .05) { const b = this.snap(); if (attempt(from.dist)) { ok = true; break; } this.load(b); this.sim(.05); }
+      for (; wait <= wait0 + 9; wait += .05) { const b = this.snap(); if (attempt(from.dist, false)) { ok = true; break; } this.load(b); if (attempt(from.dist, true)) { ok = true; break; } this.load(b); this.sim(.05); }
       if (ok) { stack.push({ origin, wait }); out.steps++; origin = this.snap(); wait0 = 0; continue; }
       const prev = stack.pop();
       if (!prev || ++out.backtracks > 300) { out.problems.push('no encontró el momento en ' + where); this.load(origin); break; }
