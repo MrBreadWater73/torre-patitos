@@ -56,6 +56,12 @@ create index if not exists partidas_record_idx on public.partidas (completados, 
 alter table public.partidas add column if not exists version  smallint not null default 1;      -- 1 = tres capítulos, 2 = siete
 alter table public.partidas add column if not exists asistido boolean  not null default false;  -- jugó con el modo asistido
 alter table public.niveles  add column if not exists tiempo_subida numeric(8,2);                 -- segundos hasta tocar al hermano; el resto es la bajada
+alter table public.partidas add column if not exists modo     text     not null default 'historia';  -- 'historia' o 'infinito'
+alter table public.partidas add column if not exists pisos    smallint not null default 0;          -- pisos que alcanzó en el modo infinito
+alter table public.partidas drop constraint if exists partidas_modo_check;
+alter table public.partidas add  constraint partidas_modo_check check (modo in ('historia', 'infinito'));
+alter table public.partidas drop constraint if exists partidas_pisos_check;
+alter table public.partidas add  constraint partidas_pisos_check check (pisos between 0 and 5000);
 
 alter table public.partidas  drop constraint if exists partidas_completados_check;
 alter table public.partidas  add  constraint partidas_completados_check check (completados between 0 and 7);
@@ -82,6 +88,7 @@ declare
   v_prev    text;
   v_nombre  text;
   v_version smallint;
+  v_modo    text;
   v_max     smallint;   -- capítulos de esa versión
   l         jsonb;
   s         jsonb;
@@ -91,19 +98,21 @@ begin
   if p_token is null or p_token !~ '^[a-f0-9]{32}$' then raise exception 'token inválido'; end if;
 
   v_hash := encode(sha256(convert_to(p_token, 'UTF8')), 'hex');
-  select token_hash, version into v_prev, v_version from partidas where id = v_id;
+  select token_hash, version, modo into v_prev, v_version, v_modo from partidas where id = v_id;
   if v_prev is not null and v_prev <> v_hash then raise exception 'sin permiso para esta partida'; end if;
 
   -- La versión se fija al crear la partida y ya no cambia
   if v_version is null then
     v_version := case when jsonb_typeof(p->'v') = 'number' and (p->>'v')::numeric >= 2 then 2 else 1 end;
   end if;
+  -- El modo también se fija al crear la partida
+  if v_modo is null then v_modo := case when p->>'mode' = 'endless' then 'infinito' else 'historia' end; end if;
   v_max := case when v_version = 2 then 7 else 3 end;
 
   v_nombre := nullif(left(regexp_replace(coalesce(p->>'nick', ''), '\s+', ' ', 'g'), 14), '');
   if v_nombre is not null and char_length(trim(v_nombre)) < 2 then v_nombre := null; end if;
 
-  insert into partidas (id, token_hash, nombre, dispositivo, golpe, completados, tiempo_total, entradas, iniciada, actualizada, version, asistido)
+  insert into partidas (id, token_hash, nombre, dispositivo, golpe, completados, tiempo_total, entradas, iniciada, actualizada, version, asistido, modo, pisos)
   values (
     v_id, v_hash, trim(v_nombre), left(p->>'device', 20),
     coalesce((p->>'combat')::boolean, true),
@@ -111,7 +120,8 @@ begin
     least(greatest(coalesce((p->>'totalTime')::numeric, 0), 0), 99999),
     case when jsonb_typeof(p->'input') = 'object' then p->'input' end,
     coalesce((p->>'startedAt')::timestamptz, now()), now(),
-    v_version, coalesce((p->>'assist')::boolean, false)
+    v_version, coalesce((p->>'assist')::boolean, false), v_modo,
+    case when v_modo = 'infinito' then least(greatest(coalesce((p->>'floors')::int, 0), 0), 5000) else 0 end
   )
   on conflict (id) do update set
     nombre = coalesce(excluded.nombre, partidas.nombre),
@@ -120,6 +130,7 @@ begin
     tiempo_total = excluded.tiempo_total,
     entradas = excluded.entradas,
     asistido = partidas.asistido or excluded.asistido,
+    pisos = greatest(partidas.pisos, excluded.pisos),
     actualizada = now();
 
   for l in select value from jsonb_array_elements(coalesce(p->'levels', '[]'::jsonb)) loop
@@ -169,7 +180,7 @@ set search_path = public
 as $$
   select coalesce(jsonb_agg(x), '[]'::jsonb) from (
     select jsonb_build_object(
-      'id', p.id, 'v', p.version, 'assist', p.asistido, 'nick', p.nombre, 'device', p.dispositivo, 'combat', p.golpe,
+      'id', p.id, 'v', p.version, 'assist', p.asistido, 'mode', case when p.modo = 'infinito' then 'endless' else 'story' end, 'floors', p.pisos, 'nick', p.nombre, 'device', p.dispositivo, 'combat', p.golpe,
       'completed', p.completados, 'totalTime', p.tiempo_total,
       'startedAt', p.iniciada, 'updatedAt', p.actualizada,
       'levels', coalesce((
@@ -204,6 +215,7 @@ drop view if exists analisis.records;
 drop view if exists analisis.resumen_capitulos;
 drop view if exists analisis.encuesta;
 drop view if exists analisis.antes_despues;
+drop view if exists analisis.infinito;
 
 create view analisis.records as
   select version, row_number() over (partition by version order by tiempo_total) as lugar, nombre, tiempo_total,
@@ -211,7 +223,7 @@ create view analisis.records as
          (select count(*) filter (where pluma) from public.niveles n where n.partida_id = p.id) as plumas,
          asistido, actualizada
   from public.partidas p
-  where completados = (case when version = 2 then 7 else 3 end) and nombre is not null
+  where completados = (case when version = 2 then 7 else 3 end) and nombre is not null and modo = 'historia'
   order by version, tiempo_total;
 
 create view analisis.resumen_capitulos as
@@ -260,4 +272,11 @@ create view analisis.antes_despues as
   from public.partidas p
   left join lateral (select sum(n.caidas) as caidas, sum(n.drones) as drones from public.niveles n where n.partida_id = p.id) t on true
   left join public.encuestas e on e.partida_id = p.id
+  where p.modo = 'historia'
   group by p.version order by p.version;
+
+-- Tablero del modo infinito: el mejor intento de cada nombre, más pisos primero
+create view analisis.infinito as
+  select row_number() over (order by pisos desc, tiempo_total) as lugar, nombre, pisos, tiempo_total, asistido, actualizada
+  from (select distinct on (lower(nombre)) * from public.partidas where modo = 'infinito' and nombre is not null order by lower(nombre), pisos desc, tiempo_total) mejores
+  order by pisos desc, tiempo_total;

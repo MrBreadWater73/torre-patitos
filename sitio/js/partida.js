@@ -3,7 +3,7 @@
 /* ============================================================
    Partida
    ============================================================ */
-function newRun(nick) {
+function newRun(nick) {   // en el modo infinito se le agrega mode: 'endless' y floors
   return { id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), v: 2, nick, startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     device: matchMedia('(pointer: coarse)').matches ? 'táctil' : 'teclado', input: { key: 0, pad: 0, tap: 0 }, combat: true, assist: false, levels: [], totalTime: 0, completed: 0, survey: null };
 }
@@ -12,12 +12,48 @@ function resetLevelState() {
   player = { row: 0, x: 2, jump: null, fall: null, drop: null, shield: 0, sq: 0, face: 1 };
   checkpoint = { row: 0, x: 2 }; drones = L.drones.map(d => Object.assign({}, d, { speed: Reglas.assisted(d.speed, assist, 'drone'), destroyed: false, stun: 0 })); assistTold = false;
   pots = (L.pots || []).map(p => ({ row: p.row, x: p.x, sunk: false, fromX: p.x, t: 1 })); plugs = new Set(); beltT = 0; windT = 0;
+  riseT = 0; riseY = L.endless ? Reglas.riseLine(0) : -99;
   phase = 'up'; gotPk = new Set(); levers = new Map(); trail = null; followers = []; chaseT = 0; chaseY = 99; dusk = 0; sibQuip = null; leverHit = null;
   crumbles.clear(); flags.clear(); featherGot = false; cooldown = 0; punch = null; pending = null; celebrate = null; particles = []; hover = null; lastHud = '';
 }
 // La torre final se arma con una semilla que sale de la partida: cada partida tiene la suya
 const chaseCfg = () => L.down && L.down.chase && { delay: L.down.chase.delay, speed: Reglas.assisted(L.down.chase.speed, assist, 'chase') };
 const seedOf = id => { let h = 2166136261; for (const ch of String(id)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
+/* ---------- Modo infinito ---------- */
+function endlessLevel() {
+  return { n: 0, name: 'Ascenso sin fin', theme: 'storm', sibling: '', sib: 'mom', tutorial: 0, bubble: '', endless: true, segments: 0, bridges: false,   // bridges: false = ningún tramo depende de aturdir drones
+    objective: 'Sube sin parar: el apagón sube desde abajo y la torre no se acaba.',
+    tip: 'No hay meta. Cada piso suma, y la torre se pone más difícil cada tres tramos. Las banderas te devuelven a salvo; si el apagón te alcanza, se acabó.',
+    zones: [[99, 'Ascenso']], rows: [{ cells: [0, 1, 2, 3, 4] }], drones: [] };
+}
+function extendEndless() {   // arma tramos por delante de Pipo; la semilla sale de la partida
+  const seed = seedOf(run.id);
+  while (L.rows.length < Math.ceil(player.row) + 16) {
+    const seg = Reglas.endlessSegmentAt(seed, L.segments++);
+    L.rows.push(...seg.rows);
+    for (const d of seg.drones) { L.drones.push(d); drones.push(Object.assign({}, d, { speed: Reglas.assisted(d.speed, assist, 'drone'), destroyed: false, stun: 0 })); }
+  }
+}
+function startEndless(skipIntro) {
+  run = newRun(store.get('torrePatitos.nick', '')); run.mode = 'endless'; run.floors = 0; if (assist) run.assist = true;
+  L = endlessLevel(); resetLevelState();
+  ls = { n: 0, time: 0, falls: 0, kills: 0, feather: false, done: false, restarts: 0, deaths: [], best: 0, tier: 0 };
+  extendEndless();
+  canvas.setAttribute('aria-label', 'Modo infinito. Usa las flechas o WASD para saltar, o toca una plataforma cercana.');
+  updateSide(); updateLegend(); updateHud(true); Store.save(run);
+  mode = 'menu'; ui.pause.disabled = true; ui.restart.disabled = true;
+  if (skipIntro) startPlaying(); else showEndlessIntro();
+}
+function endlessOver() {
+  if (mode !== 'playing') return;
+  mode = 'over'; player.jump = null; player.drop = null; shake = 8; flash = .22; tone('fall');
+  const floors = ls.best || 0, best = store.get('torrePatitos.endlessBest', 0), isBest = floors > best;
+  if (isBest) store.set('torrePatitos.endlessBest', floors);
+  run.floors = floors; run.totalTime = ls.time; Store.save(run);
+  ui.pause.disabled = true; ui.restart.disabled = true;
+  announce('El apagón te alcanzó en el piso ' + floors + '.'); updateHud(true);
+  showEndlessOver(floors, best, isBest);
+}
 function loadLevel(i) {
   L = LEVELS[i];
   if (L.generated && run.id) { Object.assign(L, Reglas.generate(Reglas.towerSeed(seedOf(run.id)), 30)); Object.assign(L.down, L.downText); }
@@ -31,7 +67,7 @@ function loadLevel(i) {
 }
 function startPlaying() {
   hideOverlay(); mode = 'playing'; lastStamp = 0; flyover = flyover && !reduced ? Object.assign(flyover, { fast: true }) : null;
-  ui.pause.disabled = false; ui.restart.disabled = false; canvas.focus({ preventScroll: true }); announce('Capítulo ' + L.n + ' en marcha.'); updateHud(true);
+  ui.pause.disabled = false; ui.restart.disabled = false; canvas.focus({ preventScroll: true }); announce(L.endless ? 'Modo infinito en marcha.' : 'Capítulo ' + L.n + ' en marcha.'); updateHud(true);
 }
 function pause() {
   if (mode === 'paused') { resume(); return; }
@@ -44,6 +80,7 @@ function pause() {
 function resume() { if (mode !== 'paused') return; mode = 'playing'; lastStamp = 0; hideOverlay(); ui.pause.setAttribute('aria-label', 'Pausar'); ui.pause.title = 'Pausar (P)'; canvas.focus({ preventScroll: true }); }
 function restartLevel() {
   if (!run || !ls || (mode !== 'playing' && mode !== 'paused')) return;
+  if (L.endless) { startEndless(true); return; }   // en el infinito reiniciar es empezar otra subida
   ls.restarts++; const keepTime = ls.time; resetLevelState(); ls.time = keepTime;
   mode = 'playing'; hideOverlay(); ui.pause.setAttribute('aria-label', 'Pausar'); ui.pause.title = 'Pausar (P)'; canvas.focus({ preventScroll: true });
   announce('Capítulo reiniciado.'); showToast('De vuelta al principio. Pipo finge que no pasó nada.', 'drop'); updateHud(true);
@@ -100,10 +137,14 @@ function settle(row, sup, floors, dir) {
     else { showToast('Paquete ' + gotPk.size + ' de ' + L.packages.length + '.', 'drop'); announce('Paquete ' + gotPk.size + ' de ' + L.packages.length + '.'); }
   }
   if (trail) moveFollower(row, sup.x);
-  const goal = Reglas.goalAt(phase, row, player.x, nRows() - 1);
+  if (L.endless) {
+    const tier = Reglas.endlessTier(Math.floor((row - 1) / 6));
+    if (row > 0 && tier > ls.tier) { ls.tier = tier; showToast('Se pone más difícil: nivel ' + (tier + 1) + '.', 'death'); tone('alarm'); }
+  }
+  const goal = L.endless ? null : Reglas.goalAt(phase, row, player.x, nRows() - 1);
   if (goal === 'exit' || (goal === 'rescue' && !L.down)) { levelClear(); return; }
   if (goal === 'rescue') rescue();
-  else if (phase === 'up' && row === nRows() - 1) announce('Camina hasta ' + L.sibling + '.');
+  else if (!L.endless && phase === 'up' && row === nRows() - 1) announce('Camina hasta ' + L.sibling + '.');
   updateHud(true);
   // Hielo: si venía de lado, Pipo sigue resbalando hasta topar con algo
   if (sup.kind === 'ice' && dir && !floors) {
@@ -191,6 +232,7 @@ function levelClear() {
   ls.done = true; ls.feather = ls.feather || featherGot;
   run.completed = Math.max(run.completed, L.n); run.totalTime = run.levels.reduce((s, l) => s + (l ? l.time : 0), 0);
   Store.save(run); store.set('torrePatitos.progress', run.completed >= LEVELS.length ? null : { run });
+  if (L.n >= LEVELS.length) store.set('torrePatitos.endless', true);   // terminar la historia desbloquea el modo infinito
   ui.pause.disabled = true; ui.restart.disabled = true;
   confetti(); tone('win');
   announce('¡Rescataste a ' + L.sibling + '!'); updateHud(true);
@@ -218,6 +260,10 @@ function simulate(dt) {
   if (mode === 'celebrate') { celebrate.t += dt; if (celebrate.t > 2) { celebrate = null; showSummary(); } return; }
   if (mode !== 'playing') return;
   clock += dt; ls.time += dt;
+  if (L.endless) {   // la torre crece por delante y el apagón sube desde abajo
+    extendEndless(); riseT += dt; riseY = Reglas.riseLine(riseT, assist ? Reglas.ASSIST.chase : 1);
+    if (Reglas.riseGone(riseY, player.row)) { endlessOver(); return; }
+  }
   if (chaseOn()) { chaseT += dt; chaseY = Reglas.chaseLine(nRows() - 1, chaseT, chaseCfg()); if (!player.fall && Reglas.chaseDead(chaseY, player.row)) fail('apagon'); }
   if (phase === 'down' && L.quips && amb > nextQuip) { sibQuip = { text: L.quips[Math.floor(Math.random() * L.quips.length)], until: amb + 2.6 }; nextQuip = amb + 9 + Math.random() * 5; }
   cooldown = Math.max(0, cooldown - dt); player.shield = Math.max(0, player.shield - dt);

@@ -34,7 +34,7 @@ torre-patitos/
 Antes de publicar la versión 2, vuelve a pegar **todo** `supabase.sql` en el SQL Editor y presiona **Run**. El mismo archivo actualiza una base existente:
 
 - No borra nada. Las partidas que ya tenías quedan marcadas como versión 1.
-- Amplía los límites a 7 capítulos y agrega tres columnas: `partidas.version`, `partidas.asistido` y `niveles.tiempo_subida`.
+- Amplía los límites a 7 capítulos y agrega cinco columnas: `partidas.version`, `partidas.asistido`, `partidas.modo`, `partidas.pisos` y `niveles.tiempo_subida`. Las dos últimas de `partidas` son del modo infinito.
 - Se puede correr más de una vez sin problema.
 
 Si publicas la versión 2 sin hacer esto, la base rechaza las partidas nuevas (capítulos del 4 al 7) y cada jugador solo ve las suyas.
@@ -73,7 +73,8 @@ Corre esto en el SQL Editor (el esquema `analisis` no se expone al público):
 
 ```sql
 select * from analisis.antes_despues;        -- una fila por versión: la comparación antes / después
-select * from analisis.records;              -- tablero completo, por versión
+select * from analisis.records;              -- tablero completo de la historia, por versión
+select * from analisis.infinito;             -- tablero del modo infinito: el mejor intento de cada nombre
 select * from analisis.resumen_capitulos;    -- % completado, tiempo mediano, subida, caídas, pluma
 select * from analisis.caidas_por_lugar;     -- dónde muere la gente (piso, columna, causa)
 select * from analisis.caidas where en_bajada;  -- solo las muertes de la bajada
@@ -83,6 +84,15 @@ select * from analisis.encuesta;             -- respuestas con etiquetas legible
 Para exportar a Excel: ejecuta la consulta y usa **Export → CSV**.
 
 Para borrar todo antes de la presentación: `truncate public.partidas cascade;`
+
+## Modo infinito
+
+Se desbloquea al terminar el capítulo 7 (también hay un botón en la pantalla final). Es un ascenso sin fin: la torre se genera por tramos de 5 pisos, sube de dificultad cada tres tramos y el apagón sube desde abajo, cada vez más rápido hasta un tope de 0.35 pisos por segundo.
+
+- **Los tramos son los que el jugador automático terminó.** `Reglas.ENDLESS_SEEDS` guarda las semillas aceptadas por nivel de dificultad. Si cambias `Reglas.endlessDraft`, repite la verificación en el navegador con `?qa`: `towerQA.verifySegments(nivel, semillas)` prueba cada tramo empezando en 60 momentos distintos del reloj (unos 4 minutos por nivel) y devuelve cuántas veces tuvo que retroceder el jugador automático.
+- **Uniones y velocidad:** `towerQA.measureRun(semillaDePartida, 18)` pega 18 tramos de una partida en un solo nivel, lo recorre y mide pisos por segundo. Sirve para comprobar que el tope del apagón sigue por debajo de lo que alcanza un jugador perfecto.
+- **Tiempos del apagón:** `Reglas.ENDLESS` (espera, velocidad inicial, aceleración y tope). El modo asistido lo reduce al 65 %.
+- **Datos:** cada intento se guarda como una partida con `mode: 'endless'` y `floors`; el dashboard los separa de la historia en la pestaña *Modo infinito*.
 
 ## Ilustraciones opcionales
 

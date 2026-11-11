@@ -8,25 +8,27 @@ function updateHud(force) {
   if (!player || !ls) return;
   const row = Math.round(player.row), top = nRows() - 1;
   ls.best = Math.max(ls.best || 0, row);
-  const key = [L.n, row, Math.floor(ls.time), ls.falls, ls.kills, featherGot, mode, Math.ceil(cooldown * 10), combat, !!player.fall, ls.best, phase, gotPk.size].join('|');
+  const key = [L.n, row, Math.floor(ls.time), ls.falls, ls.kills, featherGot, mode, Math.ceil(cooldown * 10), combat, !!player.fall, ls.best, phase, gotPk.size, L.endless ? Math.floor(riseY * 2) : 0].join('|');
   if (!force && key === lastHud) return; lastHud = key;
-  ui.zone.innerHTML = esc(L.name) + '<small>' + esc(mode === 'celebrate' ? '¡' + L.sibling + ' a salvo!' : (phase === 'down' ? '↓ ' : '') + zoneName(row)) + '</small>';
+  ui.zone.innerHTML = esc(L.name) + '<small>' + esc(L.endless ? 'Tramo ' + (Math.max(0, Math.floor((row - 1) / 6)) + 1) + ' · nivel ' + (Reglas.endlessTier(Math.max(0, Math.floor((row - 1) / 6))) + 1) : mode === 'celebrate' ? '¡' + L.sibling + ' a salvo!' : (phase === 'down' ? '↓ ' : '') + zoneName(row)) + '</small>';
   ui.chips.forEach((c, i) => { c.classList.toggle('current', i === L.n - 1); c.classList.toggle('done', !!(run && run.levels[i] && run.levels[i].done) && i !== L.n - 1); });
   ui.time.textContent = fmt(ls.time);
-  ui.total.textContent = fmt(run.levels.reduce((s, l) => s + (l ? l.time : 0), 0));
+  ui.total.textContent = L.endless ? fmt(ls.time) : fmt(run.levels.reduce((s, l) => s + (l ? l.time : 0), 0));
   ui.falls.textContent = ls.falls; ui.drones.textContent = ls.kills;
   const nPk = (L.packages || []).length; ui.rowPackages.hidden = !nPk; ui.packages.textContent = gotPk.size + ' / ' + nPk;
   ui.feather.textContent = !L.feather ? 'No hay aquí' : featherGot ? 'Conseguida ✦' : 'Por descubrir'; ui.feather.classList.toggle('got', featherGot);
   // Con ida y vuelta, la barra se llena hasta la mitad al subir y se completa al bajar
   const progress = !L.down ? ls.best / top : phase === 'up' ? ls.best / top * .5 : .5 + (top - row) / top * .5;
-  ui.height.textContent = phase === 'down' ? 'Bajando · piso ' + row : 'Piso ' + ls.best + ' / ' + top; ui.fill.style.width = progress * 100 + '%';
-  ui.track.setAttribute('aria-valuemax', String(top)); ui.track.setAttribute('aria-valuenow', String(ls.best));
+  const gap = L.endless ? Math.max(0, Math.floor(row - riseY)) : 0;   // pisos de ventaja sobre el apagón
+  ui.height.textContent = L.endless ? 'Piso ' + ls.best + ' · apagón ' + gap + (gap === 1 ? ' piso' : ' pisos') + ' atrás' : phase === 'down' ? 'Bajando · piso ' + row : 'Piso ' + ls.best + ' / ' + top;
+  ui.fill.style.width = (L.endless ? clamp(gap / 12, 0, 1) : progress) * 100 + '%';
+  ui.track.setAttribute('aria-valuemax', String(L.endless ? 12 : top)); ui.track.setAttribute('aria-valuenow', String(L.endless ? Math.min(gap, 12) : ls.best));
   ui.punch.disabled = mode !== 'playing' || !combat || cooldown > 0 || !!player.fall;
   ui.punch.style.setProperty('--ready', String(1 - cooldown / .78));
   canvas.dataset.mode = mode; canvas.dataset.row = String(row); canvas.dataset.column = String(Math.round(player.x)); canvas.dataset.level = String(L.n);
 }
 function updateSide() {
-  ui.sideRibbon.textContent = 'Expediente ' + L.n + ' de ' + LEVELS.length; ui.sideTitle.textContent = L.name; const d = phase === 'down' && L.down; ui.sideObjective.textContent = d ? d.objective : L.objective; ui.sideTip.textContent = d ? d.tip : L.tip;
+  ui.sideRibbon.textContent = L.endless ? 'Modo infinito' : 'Expediente ' + L.n + ' de ' + LEVELS.length; ui.sideTitle.textContent = L.name; const d = phase === 'down' && L.down; ui.sideObjective.textContent = d ? d.objective : L.objective; ui.sideTip.textContent = d ? d.tip : L.tip;
 }
 function updateLegend() {
   const has = k => L.rows.some(r => k === 'moving' ? r.moving : (r[k] || []).length);
@@ -53,13 +55,14 @@ const ICON_BULB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 
 function showTitle() {
   mode = 'menu'; if (!run) run = { levels: [] }; loadPreview();
-  const at = Reglas.resumeAt(store.get('torrePatitos.progress', null), LEVELS.length);
+  const at = Reglas.resumeAt(store.get('torrePatitos.progress', null), LEVELS.length), unlocked = store.get('torrePatitos.endless', false);
   showOverlay(`<p class="meta">Incidente 0427 · Estanque municipal</p><span class="ribbon">Caso abierto</span>
     <h2>Pipo no vuela. Pipo trepa.</h2>
     <p class="lead">Una flota de drones de reparto destruyó el nido familiar en horario de entrega garantizada. Tus hermanos quedaron repartidos en estructuras de dudosa legalidad. Nadie más va a ir por ellos.</p>
     <p>Son siete expedientes y se guarda tu avance al cerrar cada uno. Al final firmas el tablero de récords y llenas una encuesta de 6 preguntas. Es lo justo.</p>
     ${at == null ? '' : `<p class="resume-note">Tienes una partida guardada: vas en el expediente ${at + 1} de ${LEVELS.length}.</p>`}
-    <div class="actions">${at == null ? `<button class="btn duck" data-action="begin" data-primary>${ICON_PLAY}Abrir el expediente</button>` : `<button class="btn duck" data-action="resume-run" data-primary>${ICON_PLAY}Continuar</button><button class="btn ghost" data-action="begin">Empezar de nuevo</button>`}<button class="btn link" data-action="stats">Ver récords</button></div>`, { center: true });
+    <div class="actions">${at == null ? `<button class="btn duck" data-action="begin" data-primary>${ICON_PLAY}Abrir el expediente</button>` : `<button class="btn duck" data-action="resume-run" data-primary>${ICON_PLAY}Continuar</button><button class="btn ghost" data-action="begin">Empezar de nuevo</button>`}${unlocked ? '<button class="btn ghost" data-action="endless">Modo infinito</button>' : ''}<button class="btn link" data-action="stats">Ver récords</button></div>
+    ${unlocked ? '' : '<p class="resume-note">Terminar los siete expedientes desbloquea el modo infinito.</p>'}`, { center: true });
 }
 function loadPreview() { L = LEVELS[0]; resetLevelState(); updateSide(); updateLegend(); ls = { time: 0, falls: 0, kills: 0, deaths: [], best: 0 }; updateHud(true); }
 function showStory(i) {
@@ -110,10 +113,36 @@ function showNameEntry(err) {
     <div class="actions"><button class="btn duck" type="submit" data-primary>Firmar</button></div></form></div>`, { center: true });
   $('#nameForm').addEventListener('submit', e => { e.preventDefault(); saveName($('#nameInput').value); });
 }
+const cleanName = raw => String(raw || '').replace(/[^\p{L}\p{N} ._-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 14);
 function saveName(raw) {
-  const name = String(raw || '').replace(/[^\p{L}\p{N} ._-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 14);
+  const name = cleanName(raw);
   if (name.length < 2) { showNameEntry('Escribe al menos 2 letras o números.'); return; }
   store.set('torrePatitos.nick', name); run.nick = name; Store.save(run); tone('checkpoint'); showSurvey();
+}
+/* ---------- Modo infinito: presentación y fin de la partida ---------- */
+function showEndlessIntro() {
+  showOverlay(`<p class="meta">Modo infinito · desbloqueado</p><span class="ribbon">Sin meta</span><h2>Ascenso sin fin</h2>
+    <p class="lead">${esc(L.objective)}</p>
+    <div class="tip-box">${ICON_BULB}<span>${esc(L.tip)}</span></div>
+    <p class="resume-note">Tu mejor: piso ${store.get('torrePatitos.endlessBest', 0)}.${assist ? ' Modo asistido activado.' : ''}</p>
+    <div class="actions"><button class="btn duck" data-action="play" data-primary>${ICON_PLAY}Subir</button></div>`);
+}
+function showEndlessOver(floors, best, isBest, err) {
+  const last = store.get('torrePatitos.nick', '');
+  showOverlay(`<div class="arcade"><p class="meta">Modo infinito · el apagón te alcanzó</p><span class="ribbon">${isBest ? 'Nuevo récord' : 'Fin del ascenso'}</span>
+    <h2>Llegaste al piso ${floors}</h2>
+    <div class="score-line"><div><small>Pisos</small><b>${floors}</b></div><div><small>Tu mejor</small><b>${Math.max(best, floors)}</b></div><div><small>Tiempo</small><b>${fmt(ls.time)}</b></div></div>
+    <form id="endlessForm" novalidate><div class="field"><label for="nameInput">Tu nombre para el tablero del modo infinito</label>
+    <input id="nameInput" class="arcade-input" maxlength="14" autocomplete="nickname" spellcheck="false" placeholder="PIPO" value="${esc(last)}">
+    <p class="hint">Entre 2 y 14 letras o números. Es opcional: puedes reintentar sin firmar.</p></div>
+    ${err ? `<p class="form-error" role="alert">${esc(err)}</p>` : ''}
+    <div class="actions"><button class="btn duck" type="submit" data-primary>Firmar y reintentar</button><button class="btn ghost" type="button" data-action="endless-again">Reintentar sin firmar</button><button class="btn link" type="button" data-action="endless-board">Ver tablero</button></div></form></div>`, { center: true });
+  $('#endlessForm').addEventListener('submit', e => {
+    e.preventDefault(); const name = cleanName($('#nameInput').value);
+    if (name.length < 2) { showEndlessOver(floors, best, isBest, 'Escribe al menos 2 letras o números.'); return; }
+    store.set('torrePatitos.nick', name); run.nick = name; Store.save(run); tone('checkpoint'); startEndless(true);
+    showToast('Firmado como ' + name + '. Otra vez arriba.', 'drop');
+  });
 }
 const SURVEY = [
   { id: 'fun', q: '¿Qué tan divertido fue?', type: 'scale', ends: ['Nada', 'Muchísimo'] },
@@ -147,7 +176,7 @@ function showThanks(answered) {
   showOverlay(`<p class="meta">Expediente archivado</p><span class="ribbon green">${answered ? 'Recibido' : 'Archivado'}</span><h2>${answered ? 'Gracias por tu tiempo' : 'Récord guardado'}</h2>
     <p class="lead">${pos ? `${esc(run.nick)}, quedaste en el lugar <strong>${pos}</strong> de ${done.length} en el tablero. Felicidades, supongo.` : 'Tu partida ya aparece en las estadísticas.'}</p>
     <p>${esc(Store.note())}</p>
-    <div class="actions"><button class="btn duck" data-action="stats" data-primary>Ver estadísticas del grupo</button><button class="btn ghost" data-action="replay">Otra vez, desde cero</button></div>`, { center: true });
+    <div class="actions"><button class="btn duck" data-action="stats" data-primary>Ver estadísticas del grupo</button>${store.get('torrePatitos.endless', false) ? '<button class="btn ghost" data-action="endless">Probar el modo infinito</button>' : ''}<button class="btn ghost" data-action="replay">Otra vez, desde cero</button></div>`, { center: true });
 }
 
 const actions = {
@@ -164,7 +193,10 @@ const actions = {
   resume() { resume(); },
   restart() { restartLevel(); },
   stats() { setView('stats'); },
-  replay() { run = newRun(''); run.combat = combat; showLevelIntro(0); }
+  replay() { run = newRun(''); run.combat = combat; showLevelIntro(0); },
+  endless() { tone('click'); startEndless(); },
+  'endless-again'() { startEndless(true); },
+  'endless-board'() { statsV = 'endless'; setView('stats'); }
 };
 ui.card.addEventListener('click', e => { const b = e.target.closest('[data-action]'); if (b && actions[b.dataset.action]) actions[b.dataset.action](b); });
 

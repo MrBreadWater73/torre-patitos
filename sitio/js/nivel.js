@@ -32,6 +32,7 @@ const chaseOn = () => phase === 'down' && !!(L.down && L.down.chase);
 function platformAt(row, x) {
   if (row < 0 || row >= nRows()) return null;
   if (chaseOn() && Reglas.chaseDead(chaseY, row)) return null;   // ese piso ya se apagó
+  if (L.endless && Reglas.riseGone(riseY, row)) return null;      // en el modo infinito se apaga desde abajo
   const r = L.rows[row], near = c => Math.abs(c - x) <= .501;
   if (r.moving) { const mx = movingX(row); return Math.abs(x - mx) <= .52 ? { x: mx, kind: 'moving' } : null; }
   let c = (r.cells || []).find(c => near(c) && !goneNow(row, c)); if (c !== undefined) return { x: c, kind: 'fixed' };

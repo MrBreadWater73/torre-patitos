@@ -143,17 +143,19 @@ function drawBackground() {
   drawStructure(T, n);
 }
 function drawStructure(T, n) {
-  const top = n - .25, bot = -.45, L0 = -.62, R0 = 4.72;
+  const top = L.endless ? n + 20 : n - .25, bot = -.45, L0 = -.62, R0 = 4.72;   // en el infinito la torre sigue más allá de la pantalla
+  const lo = (BASE + cam - H - 140) / RISE, hi = (BASE + cam + 200) / RISE;   // pisos que se ven: solo se dibuja eso
   poly([project(L0, bot), project(L0, top), project(R0, top), project(R0, bot)], T.wall);
   poly([project(L0 + .1, bot), project(L0 + .1, top - .1), project(R0 - .1, top - .1), project(R0 - .1, bot)], T.wall2);
-  for (let r = bot + .45; r < top; r += .5) line([project(L0 + .1, r), project(R0 - .1, r)], T.plank, 1);
+  let r0 = bot + .45; if (lo > r0) r0 += Math.floor((lo - r0) / .5) * .5;
+  for (let r = r0; r < Math.min(top, hi); r += .5) line([project(L0 + .1, r), project(R0 - .1, r)], T.plank, 1);
   if (T.mullions) for (const x of [.4, 1.4, 2.4, 3.4]) line([project(x, bot), project(x, top - .1)], T.plank, 2);
-  if (T.lattice) for (let r = 0; r < n - 1; r++) { line([project(L0 + .1, r - .35), project(R0 - .1, r + .65)], T.plank, 2); line([project(L0 + .1, r + .65), project(R0 - .1, r - .35)], T.plank, 2); }
+  if (T.lattice) for (let r = Math.max(0, Math.floor(lo)); r < Math.min(n - 1, hi); r++) { line([project(L0 + .1, r - .35), project(R0 - .1, r + .65)], T.plank, 2); line([project(L0 + .1, r + .65), project(R0 - .1, r - .35)], T.plank, 2); }
   if (T.graffiti) for (const gf of GRAF) { if (gf.row > n - 1) continue; const o = project(gf.x, gf.row + .45); g.beginPath(); gf.pts.forEach((q, i) => i ? g.quadraticCurveTo(o.x + q[0] - 6, o.y + q[1] - 8, o.x + q[0], o.y + q[1]) : g.moveTo(o.x + q[0], o.y + q[1])); g.strokeStyle = gf.c; g.lineWidth = 4; g.lineCap = 'round'; g.stroke(); g.lineCap = 'butt'; }
   L.rows.forEach((r, i) => { if (r.checkpoint) line([project(L0, i - .36), project(R0, i - .36)], T.guide, 1, [3, 5]); });
   for (const x of [L0, R0]) { const b = project(x, bot - .15), t = project(x, top + .12); poly([P(b.x - 9, b.y), P(t.x - 9, t.y), P(t.x + 9, t.y), P(b.x + 9, b.y)], T.post); poly([P(t.x + 9, t.y), P(t.x + 20, t.y - 9), P(b.x + 20, b.y - 9), P(b.x + 9, b.y)], T.postSide); }
   const cl = project(L0, top + .12), cr = project(R0, top + .12), apex = project(2.05, top + 1.25);
-  if (apex.y > -200) {
+  if (apex.y > -200 && !L.endless) {
     if (L.theme === 'morning') {
       poly([P(cl.x - 18, cl.y + 4), P(apex.x, apex.y), P(cr.x + 26, cr.y - 2)], '#6e4a3d', '#4d3329', 2);
       const t1 = project(L0, n - 1.55), t2 = project(R0, n - 1.05);
@@ -362,6 +364,15 @@ function drawFollowers() {
     if (!i && sibQuip && amb < sibQuip.until && !jumping) drawBubble(c.x + ox, c.y - 58, sibQuip.text);
   }
 }
+/* Modo infinito: lo que queda abajo de la línea roja ya se apagó */
+function drawRise() {
+  const a = project(-1.5, riseY - .5), b = project(5.5, riseY - .5), k = (b.y - a.y) / (b.x - a.x), y0 = a.y + (0 - a.x) * k + 12, y1 = a.y + (W - a.x) * k + 12;
+  if (Math.min(y0, y1) > H + 60) return;
+  poly([P(0, y0), P(W, y1), P(W, H + 80), P(0, H + 80)], 'rgba(6,8,14,.9)');
+  const grad = g.createLinearGradient(0, Math.min(y0, y1) - 56, 0, Math.max(y0, y1)); grad.addColorStop(0, 'rgba(255,70,60,0)'); grad.addColorStop(1, 'rgba(255,70,60,.45)');
+  g.fillStyle = grad; g.beginPath(); g.moveTo(0, y0 - 56); g.lineTo(W, y1 - 56); g.lineTo(W, y1); g.lineTo(0, y0); g.closePath(); g.fill();
+  line([P(0, y0), P(W, y1)], reduced || Math.sin(amb * 12) > -.2 ? '#ff5a4e' : '#a8302a', 4);
+}
 /* Final: lo que queda arriba de la línea roja ya se apagó */
 function drawChase() {
   const y = project(2, chaseY + .5).y - 20; if (y < -40) return;
@@ -386,7 +397,7 @@ function platformAndExtras(x, row, kind, b) {
   if (L.n === 1 && row <= 2 && Math.abs(x - 2) < .1) footprints(center.x, center.y, .75);
   const off = kind === 'gate' && o.ghost; // puente apagado: no se puede pisar
   if (L.rows[row].checkpoint && x === flagCol(row) && !off) drawFlag(center.x + 15, center.y - 6, flags.get(row));
-  if (phase === 'up' && row === nRows() - 1 && x === 2) drawGoal(x, row);
+  if (phase === 'up' && !L.endless && row === nRows() - 1 && x === 2) drawGoal(x, row);
   if (o.feather && !featherGot && !off) drawFeather(x, row);
   const pi = Reglas.packageAt(L.packages, row, x); if (pi >= 0 && !gotPk.has(pi)) drawPackage(x, row);
   if (off && b.g === 'pk' && x === 2) drawBubble(center.x, center.y - 16, gotPk.size + ' / ' + L.packages.length + ' paquetes');
@@ -405,6 +416,7 @@ function render() {
   const n = nRows();
   for (let row = n - 1; row >= 0; row--) {
     const yy = project(2, row).y; if (yy < -120 || yy > H + 100) continue;
+    if (L.endless && Reglas.riseGone(riseY, row)) continue;   // ya se apagó
     const r = L.rows[row];
     if (r.moving) { drawMovingRail(row); platformAndExtras(movingX(row), row, 'moving'); }
     else {
@@ -425,6 +437,7 @@ function render() {
   if (L.n === 1 && phase === 'up' && player.row <= 1 && mode !== 'celebrate') { const a = topCenter(2, 0), b = topCenter(2, 1); g.beginPath(); g.moveTo(a.x, a.y - 3); g.quadraticCurveTo(a.x + 30, a.y - 55, b.x, b.y + 6); g.strokeStyle = 'rgba(240,138,60,.7)'; g.lineWidth = 2; g.setLineDash([4, 6]); g.stroke(); g.setLineDash([]); drawArrow(b.x, b.y + 6, -Math.PI / 2, 'rgba(240,138,60,.85)', 5); }
   drawPlayer();
   if (chaseOn()) drawChase();
+  if (L.endless) drawRise();
   drawRain();
   drawParticles();
   if (flash > 0) { g.fillStyle = 'rgba(235,240,255,' + flash + ')'; g.fillRect(0, 0, W, H); }

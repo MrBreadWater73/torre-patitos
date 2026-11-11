@@ -10,8 +10,8 @@ let heatLevel = 0;
 const CAUSE_COLORS = { hueco: 'var(--pond)', dron: 'var(--danger)', vidrio: 'var(--reed)', apagon: 'var(--duck)', viento: 'var(--muted)' };
 const CHAPTER_COLORS = ['var(--pond)', 'var(--reed)', 'var(--sodium)', 'var(--duck)', 'var(--danger)', 'var(--muted)', 'var(--ink)'];
 const EMOTION_COLORS = ['var(--pond)', 'var(--sodium)', 'var(--reed)', 'var(--danger)', 'var(--muted)'];
-let statsV = null;   // 2, 1 o 'cmp' (antes / después); se elige sola la primera vez
-const statsRuns = () => { const all = Store.all(); return { all, 1: all.filter(r => Metricas.versionOf(r) === 1), 2: all.filter(r => Metricas.versionOf(r) === 2) }; };
+let statsV = null;   // 2, 1, 'cmp' (antes / después) o 'endless'; se elige sola la primera vez
+const statsRuns = () => { const all = Store.all(), story = all.filter(r => !Metricas.isEndless(r)); return { all, endless: all.filter(Metricas.isEndless), 1: story.filter(r => Metricas.versionOf(r) === 1), 2: story.filter(r => Metricas.versionOf(r) === 2) }; };
 const levelsOf = v => v === 1 ? LEVELS_V1 : LEVELS;
 function bars(items, fmtv) {
   const max = Math.max(1, ...items.map(i => i.value));
@@ -47,13 +47,15 @@ function renderStats() {
     body.innerHTML = `<div class="empty"><h3>Nadie ha jugado. Todavía.</h3><p>Cuando alguien juegue, aquí aparecerán el avance por capítulo, el mapa de muertes, los récords y las respuestas de la encuesta.</p><button class="btn duck" data-go="play">${ICON_PLAY}Jugar la primera partida</button></div>`;
     return;
   }
-  if (statsV == null) statsV = data[2].length ? 2 : 1;
+  if (statsV == null) statsV = data[2].length ? 2 : data[1].length ? 1 : 'endless';
   const n1 = v => v == null ? '—' : (Math.round(v * 10) / 10).toLocaleString('es-MX');
   const tabs = `<div class="seg ver-seg" role="group" aria-label="Versión del juego">
     <button data-ver="2" aria-pressed="${statsV === 2}">Versión 2 · 7 capítulos <small>${data[2].length}</small></button>
     <button data-ver="1" aria-pressed="${statsV === 1}">Versión 1 · 3 capítulos <small>${data[1].length}</small></button>
-    <button data-ver="cmp" aria-pressed="${statsV === 'cmp'}">Antes / después</button></div>`;
+    <button data-ver="cmp" aria-pressed="${statsV === 'cmp'}">Antes / después</button>
+    <button data-ver="endless" aria-pressed="${statsV === 'endless'}">Modo infinito <small>${data.endless.length}</small></button></div>`;
   if (statsV === 'cmp') { body.innerHTML = tabs + compareHtml(data, n1); return; }
+  if (statsV === 'endless') { body.innerHTML = tabs + endlessHtml(data.endless, n1, me); return; }
   const runs = data[statsV], lv = levelsOf(statsV), n = lv.length;
   if (!runs.length) { body.innerHTML = tabs + `<div class="empty"><h3>Todavía no hay partidas de la versión ${statsV}.</h3><p>${statsV === 2 ? 'Juega una partida y vuelve.' : 'Las partidas del prototipo de tres capítulos aparecerían aquí.'}</p></div>`; return; }
   const s = Metricas.compute(runs, n), v2 = statsV === 2, short = l => l.name.replace(/^(La|El) /, '').replace(' de Entregas Ya!', '');
@@ -111,6 +113,27 @@ function renderStats() {
   </div>`;
   drawHeat(runs, lv);
 }
+/* Modo infinito: cuánto sube la gente y quién va primero */
+function endlessHtml(runs, n1, me) {
+  const e = Metricas.endless(runs), labels = ['0 a 11', '12 a 23', '24 a 35', '36 a 47', '48 a 59', '60 o más'];
+  if (!e.runs) return '<div class="empty"><h3>Nadie ha subido el modo infinito todavía.</h3><p>Se desbloquea al terminar los siete expedientes.</p></div>';
+  return `<div class="kpis">
+    <div class="kpi"><span>Intentos</span><strong>${e.runs}</strong><small>${e.players} nombre${e.players === 1 ? '' : 's'} en el tablero</small></div>
+    <div class="kpi"><span>Mejor piso</span><strong>${e.best}</strong><small>el récord del grupo</small></div>
+    <div class="kpi"><span>Piso mediano</span><strong>${n1(e.medFloors)}</strong><small>de todos los intentos</small></div>
+    <div class="kpi"><span>Tiempo mediano</span><strong>${e.medTime == null ? '—' : fmt(e.medTime)}</strong><small>hasta que el apagón alcanza</small></div>
+  </div>
+  <div class="grid2">
+    <section class="panel"><h3>¿Hasta dónde llegan?</h3><p class="sub">Intentos según el piso al que llegaron.</p>
+      ${cols(labels.map((l, i) => ({ label: l, value: e.bins[i], tip: l + ' pisos: ' + e.bins[i] + ' intento' + (e.bins[i] === 1 ? '' : 's') })), v => v, 'var(--pond)')}
+    </section>
+    <section class="panel"><h3>Tablero del modo infinito</h3><p class="sub">El mejor intento de cada nombre.${e.assisted ? ' ' + e.assisted + ' intento' + (e.assisted === 1 ? '' : 's') + ' con modo asistido.' : ''}</p>
+      ${e.board.length ? `<div class="table-wrap"><table><thead><tr><th>#</th><th>Nombre</th><th class="num">Pisos</th><th class="num">Tiempo</th></tr></thead><tbody>
+      ${e.board.map((r, i) => `<tr class="${r.id === me ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.nick)}${r.assist ? ' <small>· asistido</small>' : ''}</td><td class="num">${r.floors}</td><td class="num">${fmt(r.totalTime)}</td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="sub">Nadie ha firmado todavía.</p>'}
+    </section>
+  </div>`;
+}
 /* Antes / después: cada métrica de las dos versiones, junto a la observación que motivó el cambio */
 function compareHtml(data, n1) {
   if (!data[1].length || !data[2].length) return `<div class="empty"><h3>Falta una de las dos versiones.</h3><p>La comparación necesita partidas de la versión 1 (${data[1].length}) y de la versión 2 (${data[2].length}).</p></div>`;
@@ -165,7 +188,7 @@ $('#statsBody').addEventListener('pointermove', e => {
 $('#statsBody').addEventListener('pointerleave', hideTip);
 $('#statsBody').addEventListener('click', e => {
   const h = e.target.closest('[data-heat]'); if (h) { heatLevel = +h.dataset.heat; renderStats(); return; }
-  const ver = e.target.closest('[data-ver]'); if (ver) { statsV = ver.dataset.ver === 'cmp' ? 'cmp' : +ver.dataset.ver; heatLevel = 0; renderStats(); return; }
+  const ver = e.target.closest('[data-ver]'); if (ver) { statsV = ver.dataset.ver === 'cmp' || ver.dataset.ver === 'endless' ? ver.dataset.ver : +ver.dataset.ver; heatLevel = 0; renderStats(); return; }
   if (e.target.closest('[data-go="play"]')) setView('play');
 });
 

@@ -8,7 +8,7 @@ La torre de los patitos
 
 ## Descripción breve (tagline)
 
-Pipo no vuela. Pipo trepa: siete torres de ida y vuelta para recuperar a su familia.
+Pipo no vuela. Pipo trepa: siete torres de ida y vuelta para recuperar a su familia, y un ascenso sin fin.
 
 ## Descripción
 
@@ -19,6 +19,7 @@ Pipo es el único pato que nunca aprendió a volar, y por eso es el único que s
 - **7 capítulos de ida y vuelta**, cada uno con su mecánica: palancas, macetas que tapan huecos, viento, bandas transportadoras, drones que sirven de puente, hielo y un final donde el edificio se apaga detrás de ti.
 - **3 paquetes por torre** abren la puerta de arriba, y una pluma dorada espera a quien busque el camino secreto.
 - **La torre final cambia en cada partida.**
+- **Modo infinito:** al terminar la historia se desbloquea un ascenso sin fin. La torre se arma sobre la marcha, cada tres tramos se pone más difícil y el apagón sube desde abajo cada vez más rápido. Cuenta los pisos que logras antes de que te alcance, con su propio tablero.
 - **Se guarda tu avance** al cerrar cada capítulo y hay **modo asistido** para quien lo necesite.
 - Al terminar firmas el tablero de récords. La pestaña **Estadísticas** muestra cómo le va a todo el grupo.
 
@@ -42,6 +43,7 @@ Humor seco, patos cansados y ningún tutorial largo.
 3. Las banderas guardan tu avance, de subida y de bajada.
 4. Caer hasta 3 pisos duele, pero no mata. Más de 3, sí.
 5. El golpe mueve palancas y aturde drones: un dron aturdido aguanta 5 segundos como plataforma.
+6. **Modo infinito** (se desbloquea al terminar el capítulo 7, botón en la pantalla de inicio): sube sin parar; lo que queda debajo de la línea roja ya se apagó. Si te alcanza, termina y puedes firmar tu récord en pisos.
 
 ## Versión
 
@@ -49,7 +51,7 @@ Humor seco, patos cansados y ningún tutorial largo.
 
 ## Etiquetas
 
-`platformer`, `puzzle-platformer`, `singleplayer`, `2d`, `isometric`, `short`, `funny`, `ducks`, `spanish`
+`platformer`, `puzzle-platformer`, `singleplayer`, `2d`, `isometric`, `funny`, `ducks`, `spanish`, `endless`, `high-score`
 
 - **Clasificación:** Games
 - **Género:** Platformer
@@ -78,7 +80,7 @@ Código generado con asistencia de IA (Claude). Ilustraciones de la historia gen
 
 ## Capturas
 
-En `itch/capturas/` hay seis, tomadas de la versión 2.0:
+En `itch/capturas/` hay siete, tomadas de la versión 2.0:
 
 1. `01-inicio.png` — pantalla de inicio
 2. `02-palanca-y-paquetes.png` — capítulo 1: palanca, puente y letreros
@@ -86,6 +88,7 @@ En `itch/capturas/` hay seis, tomadas de la versión 2.0:
 4. `04-almacen-bandas.png` — capítulo 4: bandas transportadoras
 5. `05-camara-fria-hielo.png` — capítulo 5: hielo y cajas
 6. `06-final-apagon.png` — capítulo 7: toda la familia en fila
+7. `07-modo-infinito.png` — modo infinito: el apagón sube desde abajo
 
 La portada (630 × 500) se puede generar con el último prompt de `PROMPTS-GEMINI.md`. Falta una captura de la pestaña Estadísticas con datos reales: tómala cuando el grupo ya haya jugado la versión 2.
 

@@ -13,7 +13,7 @@ const ui = {
 };
 
 let L = LEVELS[0];
-let mode = 'menu';           // menu | playing | paused | celebrate
+let mode = 'menu';           // menu | playing | paused | celebrate | over
 let view = 'play';
 let clock = 0, amb = 0, cam = 0, flyover = null, shake = 0, flash = 0, nextFlash = 5;
 let player, checkpoint, drones = [], crumbles = new Map(), flags = new Map(), featherGot = false;
@@ -22,6 +22,7 @@ let blinkEye = { next: 2.5, until: 0 }, sibBlink = { next: 3.2, until: 0 };
 let sound = store.get('torrePatitos.sound', false), audio = null, combat = true;
 let phase = 'up', levers = new Map(), trail = null, followers = [], chaseT = 0, chaseY = 99, dusk = 0, sibQuip = null, nextQuip = 0, leverHit = null, gotPk = new Set(); // ida y vuelta, palancas, paquetes
 let assist = store.get('torrePatitos.assist', false), assistTold = false; // modo asistido
+let riseT = 0, riseY = -99; // modo infinito: tiempo del apagón y piso hasta el que llegó
 let pots = [], plugs = new Set(), beltT = 0, windT = 0; // macetas, bandas, viento
 let run = null, ls = null, lastHud = '', lastStamp = 0, vignette = null, storyIndex = 0;
 
