@@ -16,11 +16,11 @@ window.TORRE_CONFIG = {
     intro4: 'arte/intro-4.jpg',   // 'arte/intro-4.webp'  Pipo no vuela
     rescue1: 'arte/rescate-tina.jpg',  // 'arte/rescate-tina.webp'
     rescue2: 'arte/rescate-lalo.jpg',  // 'arte/rescate-lalo.webp'
-    // Versión 2: escenas nuevas (prompts 8 a 11 de PROMPTS-GEMINI.md). Vacías = las dibuja el juego.
-    rescue3: '',   // 'arte/rescate-mimi.jpg'      Mimi y su libreta
-    rescue4: '',   // 'arte/rescate-mama.jpg'      Mamá Pata sale del almacén
-    rescue5: '',   // 'arte/rescate-huevo.jpg'     Huevo sale del congelador
-    rescue6: '',   // 'arte/rescate-servidor.jpg'  rutas apagadas
-    ending: 'arte/final.jpg'    // 'arte/final.webp'
+    // Versión 2: escenas nuevas (prompts 8 a 12 de PROMPTS-GEMINI.md). Vacías = las dibuja el juego.
+    rescue3: 'arte/rescate-mimi.jpg',   // 'arte/rescate-mimi.jpg'      Mimi y su libreta
+    rescue4: 'arte/rescate-mama.jpg',   // 'arte/rescate-mama.jpg'      Mamá Pata sale del almacén
+    rescue5: 'arte/rescate-huevo.jpg',   // 'arte/rescate-huevo.jpg'     Huevo sale del congelador
+    rescue6: 'arte/rescate-servidor.jpg',   // 'arte/rescate-servidor.jpg'  rutas apagadas
+    ending: 'arte/final-v2.jpg'    // versión 2, con Huevo (final.jpg es el cierre de la versión 1)
   }
 };

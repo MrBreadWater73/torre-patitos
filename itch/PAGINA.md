@@ -76,7 +76,7 @@ Este trabajo fue desarrollado en la clase de Diseño de Videojuegos de José Lui
 
 ## Créditos
 
-Código generado con asistencia de IA (Claude). Ilustraciones de la historia generadas con Gemini. Personajes y arte originales. Fuentes: Bricolage Grotesque, Instrument Sans e IBM Plex Mono (SIL Open Font License).
+Código generado con asistencia de IA (Claude). Ilustraciones de la historia generadas con IA (Gemini y Codex/OpenAI), a partir de prompts propios. Personajes y arte originales. Fuentes: Bricolage Grotesque, Instrument Sans e IBM Plex Mono (SIL Open Font License).
 
 ## Capturas
 
@@ -90,7 +90,7 @@ En `itch/capturas/` hay siete, tomadas de la versión 2.0:
 6. `06-final-apagon.png` — capítulo 7: toda la familia en fila
 7. `07-modo-infinito.png` — modo infinito: el apagón sube desde abajo
 
-La portada (630 × 500) se puede generar con el último prompt de `PROMPTS-GEMINI.md`. Falta una captura de la pestaña Estadísticas con datos reales: tómala cuando el grupo ya haya jugado la versión 2.
+La portada (630 × 500) ya está en `itch/portada-630x500.png`. Falta una captura de la pestaña Estadísticas con datos reales: tómala cuando el grupo ya haya jugado la versión 2.
 
 ## Pasos para publicar
 
