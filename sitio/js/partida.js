@@ -318,6 +318,7 @@ function simulate(dt) {
 function frame(stamp) {
   const dt = lastStamp ? Math.min((stamp - lastStamp) / 1000, .04) : 0; lastStamp = stamp;
   if (!QA) simulate(dt);
+  musicSync(view === 'play' && mode !== 'menu' && L ? { mode, theme: L.theme, level: L.n, phase, chase: chaseOn(), endless: !!L.endless, tier: ls ? ls.tier : 0 } : { mode: view === 'play' ? mode : 'menu' });
   if (view === 'play') { render(); if (vignette) drawVignette(); }
   requestAnimationFrame(frame);
 }

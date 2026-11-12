@@ -76,7 +76,7 @@ Este trabajo fue desarrollado en la clase de Diseño de Videojuegos de José Lui
 
 ## Créditos
 
-Código generado con asistencia de IA (Claude). Ilustraciones de la historia generadas con IA (Gemini y Codex/OpenAI), a partir de prompts propios. Personajes y arte originales. Fuentes: Bricolage Grotesque, Instrument Sans e IBM Plex Mono (SIL Open Font License).
+Código generado con asistencia de IA (Claude). Ilustraciones de la historia generadas con IA (Gemini y Codex/OpenAI), a partir de prompts propios. Música original generada en el navegador con Web Audio. Personajes y arte originales. Fuentes: Bricolage Grotesque, Instrument Sans e IBM Plex Mono (SIL Open Font License).
 
 ## Capturas
 

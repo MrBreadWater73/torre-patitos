@@ -5,6 +5,17 @@
    ============================================================ */
 if (QA) window.towerQA = {
   state: () => ({ mode, level: L.n, phase, rise: +riseY.toFixed(2), rows: L.rows.length, segments: L.segments || 0, floors: ls && ls.best, levers: [...levers.entries()], packages: [...gotPk], pots: pots.map(p => [p.row, p.x, p.sunk]), drones: drones.map(d => ({ row: d.row, x: +(d.stun > 0 ? d.fx : droneX(d)).toFixed(2), stun: +(d.stun || 0).toFixed(2), destroyed: d.destroyed })), followers: followers.map(f => [f.kind, f.row, f.x]), chaseY, clock, cam, player: Object.assign({}, player), checkpoint, featherGot, ls: ls && JSON.parse(JSON.stringify(ls)), run: run && JSON.parse(JSON.stringify(run)), crumbles: [...crumbles.entries()], hitAreas: hitAreas.length }),
+  music: () => music.key,
+  musicSetSound: on => { sound = on; },
+  async musicCheck(seconds) {   // toca cada pieza sin conexión y devuelve su volumen
+    const out = [], names = ['menu', 'morning', 'greenhouse', 'storm', 'warehouse', 'cold', 'server'];
+    const scs = [Musica.scene({ mode: 'menu' })];
+    names.slice(1).forEach((theme, i) => ['up', 'down'].forEach(phase => scs.push(Musica.scene({ mode: 'playing', theme, level: i + 1, phase }))));
+    scs.push(Musica.scene({ mode: 'playing', theme: 'storm', level: 7, phase: 'up' }), Musica.scene({ mode: 'playing', theme: 'storm', level: 7, phase: 'down', chase: true }));
+    for (let tier = 0; tier <= 5; tier++) scs.push(Musica.scene({ mode: 'playing', endless: true, level: 8, tier }));
+    for (const sc of scs) out.push(await musicRender(sc, seconds || 8));
+    return out;
+  },
   advance(dt) { for (let t = 0; t < dt; t += 1 / 120) simulate(Math.min(1 / 120, dt - t)); render(); if (vignette) drawVignette(); },
   act: name => actions[name](), move, attack, hop: beginHop, startLevel: i => { if (!run || !run.id) run = newRun('QA'); showLevelIntro(i); startPlaying(); },
   movingX, droneX, blinkState, platformAt, setView, render, Store, compute: v => Metricas.compute(Store.all().filter(r => Metricas.versionOf(r) === (v || 2)), v === 1 ? LEVELS_V1.length : LEVELS.length), place(row, x) { player.row = row; player.x = x; player.jump = null; player.fall = null; player.drop = null; },

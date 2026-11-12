@@ -98,6 +98,10 @@ Se desbloquea al terminar el capítulo 7 (también hay un botón en la pantalla 
 
 Genera las imágenes con los prompts de `PROMPTS-GEMINI.md`, guárdalas en `sitio/arte/` (WebP o JPG, unos 1040 × 460 px) y escribe sus rutas en el bloque `ART` de `config.js`. Las que dejes vacías se siguen dibujando con el canvas del juego.
 
+## Música
+
+Cada capítulo tiene su propia pieza, y la bajada suena más grave y tensa; el apagón final y el modo infinito aceleran. Se genera en el navegador con Web Audio (sin archivos de audio, sin licencias que atribuir) y la controla el mismo botón de sonido, que arranca apagado: el navegador exige un clic antes de reproducir. Las piezas son datos en `sitio/js/musica.js` (tonalidad, tempo y patrones por ambiente); para cambiar una, edita su entrada en `THEMES`. El motor de audio está en `sitio/js/estado.js`. Con `?qa`, `towerQA.musicCheck()` toca cada pieza sin conexión y devuelve su volumen pico y medio.
+
 ## Bugs corregidos del prototipo original
 
 1. Tocar o hacer clic sobre plataformas que se enciman elegía la de atrás, no la de adelante.
@@ -114,5 +118,5 @@ Genera las imágenes con los prompts de `PROMPTS-GEMINI.md`, guárdalas en `siti
 ## Desarrollo
 
 - **Probar en local:** el juego necesita un servidor web (no funciona abriendo el archivo con doble clic). Dentro de `sitio/` corre `python3 -m http.server 8000` y abre `http://localhost:8000`. Ojo: si `config.js` tiene las llaves de Supabase, las partidas de prueba se guardan en la base real; vacíalas mientras pruebas.
-- **Pruebas:** `node --test tests/` corre las pruebas de `sitio/js/reglas.js` (las reglas del juego que no dependen del dibujo), de los niveles (un verificador comprueba que cada uno se pueda terminar, subida y bajada) y de `sitio/js/metricas.js` (los números del dashboard).
+- **Pruebas:** `node --test tests/` corre las pruebas de `sitio/js/reglas.js` (las reglas del juego que no dependen del dibujo), de los niveles (un verificador comprueba que cada uno se pueda terminar, subida y bajada) de `sitio/js/metricas.js` (los números del dashboard) y de `sitio/js/musica.js` (qué suena y qué notas toca cada pieza).
 - **Modo de prueba:** agrega `?qa` a la URL para pausar el reloj y manejar el juego desde la consola con `towerQA`. `towerQA.startLevel(0); towerQA.bot()` hace que un jugador automático termine el capítulo con todos los peligros activos.
